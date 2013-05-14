@@ -15,8 +15,7 @@ import Data.Foldable (foldlM)
 import Data.List (isPrefixOf, isSuffixOf, group, sort)
 import Data.Maybe (isJust, fromJust)
 import qualified Data.Set as S
-import qualified Data.Text as T (Text, append, init, isPrefixOf, isSuffixOf,
-                                 pack, replace, unpack)
+import qualified Data.Text as T (Text, append, init, isSuffixOf, pack, unpack)
 import Network.Curl.Opts
 import Network.Shpider
 import NLP.Tokenize (tokenize)
