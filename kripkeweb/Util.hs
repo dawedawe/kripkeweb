@@ -1,13 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Util
-( hasLetters
+( dropRelsWithElemIn
+, flattenTuples
+, hasLetters
 , lowerString
 , trim
 , unquote
 ) where
 
 import Data.Char (isLetter, isSpace, toLower)
+import qualified Data.List as L
 
 -- |Transform a String to a lower case version.
 lowerString :: String -> String
@@ -31,3 +34,9 @@ trim :: String -> String
 trim = f . f
     where f = reverse . dropWhile isSpace
 
+-- |Drop relations containing one or two elements of the given list.
+dropRelsWithElemIn :: (Eq a) => [a] -> [(a, a)] -> [(a, a)]
+dropRelsWithElemIn xs = filter (\(x, y) -> x `notElem` xs && y `notElem` xs)
+
+flattenTuples :: (Eq a) => [(a, a)] -> [a]
+flattenTuples xs = L.nub $ concatMap (\x -> [fst x, snd x]) xs

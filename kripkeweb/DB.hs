@@ -35,6 +35,9 @@ module DB
 , worldsWithOLinksIntersectWith
 , worldsWithILinksSubsetOf
 , worldsWithOLinksSubsetOf
+, targetsOfTargetsPure
+, targetRelsOfPure
+, hasTransViolation
 ) where
 
 import Control.Monad (liftM, when)
@@ -45,6 +48,7 @@ import GHC.Int
 import NLP.Snowball
 
 import KripkeTypes
+import Util
 
 myConn :: ConnectInfo
 myConn = ConnectInfo "localhost" 5432 "saul" "13_kripke_13" "kripkeweb"
@@ -437,18 +441,22 @@ symSubSet c =
 -- |Transitive subsets of R.
 transSubSets :: Connection -> IO [[(T.Text, T.Text)]]
 transSubSets c = do
-    ws <- worldsInLinks c
-    liftM (filter (/= [])) (mapM (transWorldsOf c) ws)
+    ws   <- worldsInLinks c
+    subSets <- liftM (filter (/= [])) (mapM (transWorldsOf c) ws)
+    -- make sure there are no transitive violations in the transWorldsOf-sets
+    let vs = [filter (hasTransViolation s) (flattenTuples s)| s <- subSets]
+    return [dropRelsWithElemIn b r | (b, r) <- zip vs subSets]
 
 -- |Worlds that form transitive relations with the given world.
+-- There might be transitive violations between the other worlds.
 transWorldsOf :: Connection -> T.Text -> IO [(T.Text, T.Text)]
 transWorldsOf c w = do
     -- relations of w without a possible reflexive one
     relsOfw <- liftM (filter (/= (w, w))) (targetRelsOf c w)
-    let trgsofw  = map snd relsOfw
+    let trgsofw = map snd relsOfw
     -- targets of targets without backlinks
     totRels <- liftM (filter ((/= w) . snd)) (targetsOfTargets c trgsofw)
-    let toft     = map snd totRels
+    let toft    = map snd totRels
     if toft `L.intersect` trgsofw == toft   -- w can reach targets of targets
       then return (L.nub (relsOfw ++ totRels))
       else return []
@@ -463,4 +471,23 @@ targetRelsOf :: Connection -> T.Text -> IO [(T.Text, T.Text)]
 targetRelsOf c w = do
     trg <- targetsOf c w
     return [(w, t) | t <- trg]
+
+-- |Relations with the given world as the source.
+targetRelsOfPure :: [(T.Text, T.Text)] -> T.Text -> [(T.Text, T.Text)]
+targetRelsOfPure rels w = filter ((== w) . fst) rels
+
+-- |Pure version of targetsOfTargets.
+targetsOfTargetsPure :: [(T.Text, T.Text)] -> [T.Text] -> [(T.Text, T.Text)]
+targetsOfTargetsPure rels tgs = filter ((`elem` tgs) . fst) rels
+
+-- |True, if not all targets of targets of w can be reached directly from w.
+hasTransViolation :: [(T.Text, T.Text)] -> T.Text -> Bool
+hasTransViolation rels w =
+    let
+      relsOfW = filter (/= (w, w)) (targetRelsOfPure rels w)
+      trgsOfw = map snd relsOfW
+      totRels = filter ((/= w) . snd) (targetsOfTargetsPure rels trgsOfw)
+      tOft    = map snd totRels
+    in 
+      tOft `L.intersect` trgsOfw /= tOft
 
