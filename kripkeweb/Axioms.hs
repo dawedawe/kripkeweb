@@ -12,6 +12,8 @@ import qualified Data.Text as T
 import Database.PostgreSQL.Simple
 
 import DB
+import KripkeTypes
+import LogicSearch
 import Util
 
 -- |Reflexive (T) and symmetric (B) subset of R.
@@ -77,3 +79,16 @@ addSyms = L.nub . concatMap (\(x, y) -> [(x, y), (y, x)])
 dropDuplicates :: (Eq a, Ord a) => [[a]] -> [[a]]
 dropDuplicates = map S.toList . L.nub . map S.fromList
 
+--------------------------------------------------------------------------------
+-- test functions for the axioms
+
+-- |Test if K: [](p -> q) -> ([]p -> []q) holds in every world.
+isBigK :: Connection -> LambdaType -> MLFml -> MLFml -> IO Bool
+isBigK c lamType (MLVar p) (MLVar q) = do
+    let prem = Box (MLImp (MLVar p) (MLVar q))
+    let conc = MLImp (Box (MLVar p)) (Box (MLVar q))
+    let frm  = MLImp prem conc
+    sw <- satWorlds c lamType frm
+    ws <- worldsInLambda c lamType
+    return (S.fromList sw == S.fromList ws)
+isBigK _ _       _         _         = error "isBigK: undefined parameters"
