@@ -459,9 +459,11 @@ transWorldsOf c w = do
       then return (L.nub (relsOfw ++ totRels))
       else return []
 
--- |concatinated relsStartingWith of given world list.
+-- |Relations staring in one world of the given list.
 relsStartingIn :: Connection -> [T.Text] -> IO [(T.Text, T.Text)]
-relsStartingIn c ws = liftM (L.nub . concat) (mapM (relsStartingWith c) ws)
+relsStartingIn c ws =
+    let q = "SELECT source, target FROM links WHERE source IN ?"
+    in  query c q (Only (In ws))
 
 -- |Pure version of relsStartingIn.
 relsStartingIn' :: [(T.Text, T.Text)] -> [T.Text] -> [(T.Text, T.Text)]
