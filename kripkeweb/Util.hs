@@ -38,5 +38,6 @@ trim = f . f
 dropRelsWithElemIn :: (Eq a) => [a] -> [(a, a)] -> [(a, a)]
 dropRelsWithElemIn xs = filter (\(x, y) -> x `notElem` xs && y `notElem` xs)
 
+-- |Take the elements out of every tuple and remove duplicates.
 flattenTuples :: (Eq a) => [(a, a)] -> [a]
-flattenTuples xs = L.nub $ concatMap (\x -> [fst x, snd x]) xs
+flattenTuples xs = L.nub $ concatMap (\(x, y) -> [x, y]) xs
