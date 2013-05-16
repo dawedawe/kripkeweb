@@ -22,7 +22,8 @@ reflSymSubSet c = do
     refls <- reflSubSet c
     syms  <- symSubSet c
     let reflSyms = filter (pairIn refls) syms
-    let symRefls = [(x, x) | x <- map fst reflSyms] -- generate needed reflexivs
+    -- generate needed reflexivs
+    let symRefls = [(x, x) | x <- L.nub (map fst reflSyms)]
     return (reflSyms ++ symRefls)
 
 -- |Reflexive (T) and transitive (4) subsets of R.
@@ -88,7 +89,40 @@ isBigK c lamType (MLVar p) (MLVar q) = do
     let prem = Box (MLImp (MLVar p) (MLVar q))
     let conc = MLImp (Box (MLVar p)) (Box (MLVar q))
     let frm  = MLImp prem conc
-    sw <- satWorlds c lamType frm
-    ws <- worldsInLambda c lamType
-    return (S.fromList sw == S.fromList ws)
+    isSatInBigW c lamType frm
 isBigK _ _       _         _         = error "isBigK: undefined parameters"
+
+-- |Test if T: []p -> p (+K, reflexivity) holds in the given set of worlds.
+isBigT :: Connection -> LambdaType -> [T.Text] -> MLFml -> IO Bool
+isBigT c lamType ws p@(MLVar v) =
+    let frm = MLImp (Box p) p
+    in  isSatInWorlds c lamType frm ws
+isBigT _ _       _  _           = error "isBigT: undefined parameters"
+
+-- |Test if D: []p -> <>p (+K, seriell) All w: Ex v(wRv) holds in every worlds.
+isBigD :: Connection -> LambdaType -> MLFml -> IO Bool
+isBigD c lamType p@(MLVar v) =
+    let frm = MLImp (Box p) (Diamond p)
+    in  isSatInBigW c lamType frm
+isBigD _ _       _           = error "isBigD: undefined parameters"
+
+-- |Test if B: p -> []<>p (+T, refl. symmetry) holds in the given set of worlds.
+isBigB :: Connection -> LambdaType -> [T.Text] -> MLFml -> IO Bool
+isBigB c lamType ws p@(MLVar v) =
+    let frm = MLImp p (Box (Diamond p))
+    in  isSatInWorlds c lamType frm ws
+isBigB _ _       _  _           = error "isBigB: undefined parameters"
+
+-- |Test if 4: []p -> [][]p (+T, refl. trans.) holds in the given set of worlds.
+isBig4 :: Connection -> LambdaType -> [T.Text] -> MLFml -> IO Bool
+isBig4 c lamType ws p@(MLVar _) =
+    let frm = MLImp (Box p) (Box (Box p))
+    in  isSatInWorlds c lamType frm ws
+isBig4 _ _       _  _           = error "isBig4: undefined parameters"
+
+-- |Test if 5: <>p -> []<>p (+T, refl. trans. symm holds in given set of worlds.
+isBig5 :: Connection -> LambdaType -> [T.Text] -> MLFml -> IO Bool
+isBig5 c lamType ws p@(MLVar _) =
+    let frm = MLImp (Diamond p) (Box (Diamond p))
+    in  isSatInWorlds c lamType frm ws
+isBig5 _ _       _  _           = error "isBig5: undefined parameters"
