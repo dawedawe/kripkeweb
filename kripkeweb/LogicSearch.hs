@@ -5,12 +5,16 @@ module LogicSearch
 , MLFml (..)
 , Quantor (..)
 , eval2B
+, isSatInBigW
+, isSatInWorld
+, isSatInWorlds
 , satWorlds
 , parseFml
 ) where
 
 import Control.Monad (filterM, liftM, liftM2)
 import Data.List ((\\), elemIndices, intersect, union)
+import qualified Data.Set as S
 import qualified Data.Text as T
 import Database.PostgreSQL.Simple
 
@@ -20,8 +24,10 @@ import Model
 import Util
 
 -- |Check if x is satisfied in a given world.
-class SatInWorld x where
-    isSatInWorld :: Connection -> LambdaType -> x -> T.Text -> IO Bool
+class SatIn x where
+    isSatInWorld  :: Connection -> LambdaType -> x -> T.Text -> IO Bool
+    isSatInWorlds :: Connection -> LambdaType -> x -> [T.Text] -> IO Bool
+    isSatInBigW   :: Connection -> LambdaType -> x -> IO Bool
 
 -- |Worlds satisfying x.
 class SatWorlds x where
@@ -88,7 +94,7 @@ instance SatWorlds MLFml where
     allWorlds <- worldsInLambda c lamType
     filterM (isSatInWorld c lamType (Diamond phi)) allWorlds
 
-instance SatInWorld MLFml where
+instance SatIn MLFml where
   isSatInWorld c lamType (MLVar phi) w = do
     phi' <- termAsLamType c lamType (Just w) phi
     fmls <- lambda c lamType w
@@ -116,6 +122,14 @@ instance SatInWorld MLFml where
     tgs <- targetsOf c w
     liftM or (mapM (isSatInWorld c lamType phi) tgs)
  
+  isSatInWorlds c lamType frm ws =
+    liftM and (mapM (isSatInWorld c lamType frm) ws)
+
+  isSatInBigW c lamType frm = do
+    sw <- satWorlds c lamType frm
+    ws <- worldsInLambda c lamType
+    return (S.fromList sw == S.fromList ws)
+
 instance Show Fml where
     show (Var x)       = show x
     show (Not (Var x)) = "!(" ++ show (Var x) ++ ")"
