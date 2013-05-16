@@ -454,8 +454,9 @@ transWorldsOf c w = do
     -- relations of w without a possible reflexive one
     relsOfw <- liftM (filter (/= (w, w))) (targetRelsOf c w)
     let trgsofw = map snd relsOfw
-    -- targets of targets without backlinks
-    totRels <- liftM (filter ((/= w) . snd)) (targetsOfTargets c trgsofw)
+    -- targets of targets without backlinks to w and reflexives
+    totRels <- liftM (filter (\(x, y) -> y /= w && x /= y))
+                 (targetsOfTargets c trgsofw)
     let toft    = map snd totRels
     if toft `L.intersect` trgsofw == toft   -- w can reach targets of targets
       then return (L.nub (relsOfw ++ totRels))
