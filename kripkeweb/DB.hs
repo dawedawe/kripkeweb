@@ -469,9 +469,9 @@ relsStartingIn' rels tgs = filter ((`elem` tgs) . fst) rels
 
 -- |Relations with the given world as the source.
 relsStartingWith :: Connection -> T.Text -> IO [(T.Text, T.Text)]
-relsStartingWith c w = do
-    trg <- targetsOf c w
-    return [(w, t) | t <- trg]
+relsStartingWith c w =
+    let q = "SELECT source, target FROM links WHERE source = ?"
+    in  query c q (Only w)
 
 -- |Pure version of relsStartingWith.
 relsStartingWith' :: [(T.Text, T.Text)] -> T.Text -> [(T.Text, T.Text)]
