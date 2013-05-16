@@ -451,7 +451,7 @@ transWorldsOf c w = do
     -- relations of w without a possible reflexive one
     relsOfw <- liftM (filter (/= (w, w))) (relsStartingWith c w)
     let trgsOfw = map snd relsOfw
-    -- targets of targets without backlinks to w and reflexives
+    -- relations of targets without backlinks to w and reflexives
     totRels <- liftM (filter (\(x, y) -> y /= w && x /= y))
                  (relsStartingIn c trgsOfw)
     let tOft    = map snd totRels
