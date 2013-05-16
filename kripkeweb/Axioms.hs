@@ -23,7 +23,7 @@ reflSymSubSet c = do
     syms  <- symSubSet c
     let reflSyms = filter (pairIn refls) syms
     -- generate needed reflexivs
-    let symRefls = [(x, x) | x <- L.nub (map fst reflSyms)]
+    let symRefls = [(x, x) | x <- flattenTuples reflSyms]
     return (reflSyms ++ symRefls)
 
 -- |Reflexive (T) and transitive (4) subsets of R.
