@@ -42,10 +42,9 @@ symTransSubSets :: Connection -> IO [[(T.Text, T.Text)]]
 symTransSubSets c = do
     syms  <- symSubSet c
     trans <- transSubSets c
-    let trans'     = map (filter (uncurry (/=))) trans
     -- drop relations interacting with the source world of a missing symmetry
-    let badOnes    = map (startOfMissingSyms syms) trans' 
-    let symTrans   = [dropRelsWithElemIn bs ts | (ts, bs) <- zip trans' badOnes]
+    let badOnes    = map (startOfMissingSyms syms) trans
+    let symTrans   = [dropRelsWithElemIn bs ts | (ts, bs) <- zip trans badOnes]
     let resultSets = map addSyms symTrans -- add symmetric relations to result
     return (dropDuplicates resultSets) -- we might have constructed duplicates
 
