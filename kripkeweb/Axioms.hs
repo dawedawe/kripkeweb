@@ -56,8 +56,8 @@ reflSymTransSubSets c = do
     -- both ends of a relation must be reflexive
     let refSymTrans = filter (/= []) (map (filter (pairIn refls)) st)
     -- generate needed reflexives to zip together the results
-    let symtraRefls = map (makeReflTuples . flattenTuples) refSymTrans
-    let resultSets = map L.nub (zipWith (++) refSymTrans symtraRefls)
+    let symTraRefls = map (makeReflTuples . flattenTuples) refSymTrans
+    let resultSets = map L.nub (zipWith (++) refSymTrans symTraRefls)
     return (dropDuplicates resultSets) -- we might have constructed duplicates
 
 -- |True, if both pair elements are elems of the list.
@@ -75,7 +75,7 @@ startOfMissingSyms syms rels = [y | (x, y) <- rels, (y, x) `notElem` syms]
 addSyms :: (Eq a) => [(a, a)] -> [(a, a)]
 addSyms = L.nub . concatMap (\(x, y) -> [(x, y), (y, x)])
 
--- |Drops duplicate lists, don't care about order.
+-- |Drops duplicate lists, don't care about keeping order.
 dropDuplicates :: (Eq a, Ord a) => [[a]] -> [[a]]
 dropDuplicates = map S.toList . L.nub . map S.fromList
 
