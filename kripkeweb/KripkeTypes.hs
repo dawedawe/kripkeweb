@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module KripkeTypes
-( LambdaEntry (..)
+( Frame (..)
+, LambdaEntry (..)
 , LambdaRels (..)
 , LambdaType (..)
 , MyStemAlgo (..)
@@ -22,6 +23,10 @@ import Database.PostgreSQL.Simple.ToField
 import NLP.Snowball (Algorithm (..))
 
 import Util (unquote)
+
+data Frame = Frame { wSet   :: S.Set Text
+                   , accRel :: S.Set (Text, Text)
+                   } deriving (Eq, Ord, Show)
 
 -- |Type to hold all versions of postprocessed lambda data of a world.
 data LambdaRels = LambdaRels { rawLamRels   :: OneToNtuples

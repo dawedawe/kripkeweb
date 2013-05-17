@@ -14,13 +14,16 @@ module DB
 , outLinkCountAndPageRankofSources
 , pathsTo
 , pathsToViaLambda
+, reflSubFrame
 , reflSubSet
 , sourcesInLinks
 , sourcesOf
 , stemLang
+, symSubFrame
 , symSubSet
 , targetsOf
 , termFrequency
+, transSubFrames
 , transSubSets
 , updatePageRank
 , worldCountInLambda
@@ -39,6 +42,7 @@ module DB
 
 import Control.Monad (liftM, when)
 import qualified Data.List as L
+import qualified Data.Set as S
 import qualified Data.Text as T
 import Database.PostgreSQL.Simple
 import GHC.Int
@@ -426,6 +430,13 @@ reflSubSet c =
     let q = "SELECT source from links where source = target"
     in  liftM (map fromOnly) (query_ c q)
 
+-- |Reflexive subframe of (W, R).
+reflSubFrame :: Connection -> IO Frame
+reflSubFrame c = do
+    let q = "SELECT source, target from links where source = target"
+    r <- query_ c q
+    return (Frame (S.fromList (flattenTuples r)) (S.fromList r))
+
 -- |Symmetric subset of W.
 symSubSet :: Connection -> IO [(T.Text, T.Text)]
 symSubSet c =
@@ -434,6 +445,27 @@ symSubSet c =
             \AND (target, source) IN \
               \(select source, target from links)"
     in  query_ c q
+
+symSubFrame :: Connection -> IO Frame
+symSubFrame c = do
+    let q = "SELECT source, target FROM links \
+            \WHERE source <> target \
+            \AND (target, source) IN \
+              \(select source, target from links)"
+    r <- query_ c q
+    return (Frame (S.fromList (flattenTuples r)) (S.fromList r))
+
+-- |Transitive subframe of (W, R).
+transSubFrames :: Connection -> IO (S.Set Frame)
+transSubFrames c = do
+    ws      <- worldsInLinks c
+    subSets <- liftM (filter (/= [])) (mapM (transWorldsOf c) ws)
+    -- make sure there are no transitive violations in the transWorldsOf-sets
+    let vs = [filter (hasTransViolation s) (flattenTuples s)| s <- subSets]
+    let rs = [dropRelsWithElemIn b r | (b, r) <- zip vs subSets]
+    let ws = map flattenTuples rs
+    let fr = [Frame (S.fromList w) (S.fromList r) | (w, r) <- zip ws rs]
+    return (S.fromList fr)
 
 -- |Transitive subsets of R.
 transSubSets :: Connection -> IO [[(T.Text, T.Text)]]
@@ -474,10 +506,6 @@ relsStartingWith :: Connection -> T.Text -> IO [(T.Text, T.Text)]
 relsStartingWith c w =
     let q = "SELECT source, target FROM links WHERE source = ?"
     in  query c q (Only w)
-
--- |Pure version of relsStartingWith.
-relsStartingWith' :: [(T.Text, T.Text)] -> T.Text -> [(T.Text, T.Text)]
-relsStartingWith' rels w = filter ((== w) . fst) rels
 
 -- |True, if not all targets of targets of w can be reached directly from w.
 hasTransViolation :: [(T.Text, T.Text)] -> T.Text -> Bool

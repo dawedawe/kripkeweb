@@ -5,10 +5,14 @@ module LogicSearch
 , MLFml (..)
 , Quantor (..)
 , eval2B
+, isFTrueInWorld
+, isFTrueInWorlds
+, isFUniversallyTrue
 , isTrueInWorld
 , isTrueInWorlds
 , isUniversallyTrue
 , satWorlds
+, satFWorlds
 , parseFml
 ) where
 
@@ -25,13 +29,20 @@ import Util
 
 -- |Check if x is true in ...
 class TrueIn x where
-    isTrueInWorld  :: Connection -> LambdaType -> x -> T.Text -> IO Bool
-    isTrueInWorlds :: Connection -> LambdaType -> x -> [T.Text] -> IO Bool
+    isTrueInWorld     :: Connection -> LambdaType -> x -> T.Text -> IO Bool
+    isTrueInWorlds    :: Connection -> LambdaType -> x -> [T.Text] -> IO Bool
     isUniversallyTrue :: Connection -> LambdaType -> x -> IO Bool
+    -- take the frame as an argument instead of out of the database
+    isFTrueInWorld     :: Connection -> LambdaType -> Frame -> x -> T.Text ->
+                          IO Bool
+    isFTrueInWorlds    :: Connection -> LambdaType -> Frame -> x ->
+                          S.Set T.Text -> IO Bool
+    isFUniversallyTrue :: Connection -> LambdaType -> Frame -> x -> IO Bool
 
 -- |Worlds satisfying x.
 class SatWorlds x where
     satWorlds :: Connection -> LambdaType -> x -> IO [T.Text]
+    satFWorlds :: Connection -> LambdaType -> Frame -> x -> IO [T.Text]
 
 class Eval2Bool x where
     eval2B :: Connection -> LambdaType -> x -> IO Bool
@@ -69,6 +80,8 @@ instance SatWorlds Fml where
   satWorlds c lamType (Imp phi psi) =
     satWorlds c lamType (Or (Not phi) psi)
 
+  satFWorlds = undefined
+
 instance SatWorlds MLFml where
   satWorlds c lamType (MLVar phi) = do
     phi' <- termAsLamType c lamType Nothing phi
@@ -93,6 +106,32 @@ instance SatWorlds MLFml where
   satWorlds c lamType (Diamond phi) = do
     allWorlds <- worldsInLambda c lamType
     filterM (isTrueInWorld c lamType (Diamond phi)) allWorlds
+
+  satFWorlds c lamType (Frame w _) (MLVar phi) = do
+    phi' <- termAsLamType c lamType Nothing phi
+    liftM (`intersect` (S.toList w)) (worldsWithFormula c lamType phi')
+
+  satFWorlds c lamType frm@(Frame w _) (MLNot phi) =
+    liftM ((S.toList w) \\) (satFWorlds c lamType frm phi)
+
+  satFWorlds c lamType frm@(Frame w _) (MLAnd phi psi) = do
+    dbWorlds <- liftM2 intersect
+                  (satFWorlds c lamType frm phi) (satFWorlds c lamType frm psi)
+    return (intersect (S.toList w) dbWorlds)
+
+  satFWorlds c lamType frm@(Frame w _) (MLOr phi psi) = do
+    dbWorlds <- liftM2 union
+                  (satFWorlds c lamType frm phi) (satFWorlds c lamType frm psi)
+    return (intersect (S.toList w) dbWorlds)
+
+  satFWorlds c lamType frm (MLImp phi psi) =
+    satFWorlds c lamType frm (MLOr (MLNot phi) psi)
+
+  satFWorlds c lamType frm@(Frame w _) (Box phi) = do
+    filterM (isFTrueInWorld c lamType frm (Box phi)) (S.toList w)
+
+  satFWorlds c lamType frm@(Frame w _) (Diamond phi) = do
+    filterM (isFTrueInWorld c lamType frm (Diamond phi)) (S.toList w)
 
 instance TrueIn MLFml where
   isTrueInWorld c lamType (MLVar phi) w = do
@@ -120,13 +159,61 @@ instance TrueIn MLFml where
     tgs <- targetsOf c w
     liftM or (mapM (isTrueInWorld c lamType phi) tgs)
  
-  isTrueInWorlds c lamType frm ws =
-    liftM and (mapM (isTrueInWorld c lamType frm) ws)
+  isTrueInWorlds c lamType fml ws =
+    liftM and (mapM (isTrueInWorld c lamType fml) ws)
 
-  isUniversallyTrue c lamType frm = do
-    sw <- satWorlds c lamType frm
+  isUniversallyTrue c lamType fml = do
+    sw <- satWorlds c lamType fml
     ws <- worldsInLambda c lamType
     return (S.fromList sw == S.fromList ws)
+
+  isFTrueInWorld c lamType frm (MLVar phi) w
+    | w `S.member` wSet frm = isTrueInWorld c lamType (MLVar phi) w
+    | otherwise             = error "isFTrueInWorld: world not in frame"
+
+  isFTrueInWorld c lamType frm (MLNot phi) w
+    | w `S.member` wSet frm = liftM not (isFTrueInWorld c lamType frm phi w)
+    | otherwise             = error "isFTrueInWorld: world not in frame"
+
+  isFTrueInWorld c lamType frm (MLAnd phi psi) w
+    | w `S.member` wSet frm =
+        liftM2 (&&)
+          (isFTrueInWorld c lamType frm phi w)
+          (isFTrueInWorld c lamType frm psi w)
+    | otherwise             = error "isFTrueInWorld: world not in frame"
+
+  isFTrueInWorld c lamType frm (MLOr phi psi) w
+    | w `S.member` wSet frm =
+        liftM2 (||)
+          (isFTrueInWorld c lamType frm phi w)
+          (isFTrueInWorld c lamType frm psi w)
+    | otherwise             = error "isFTrueInWorld: world not in frame"
+
+  isFTrueInWorld c lamType frm (MLImp phi psi) w
+    | w `S.member` wSet frm =
+        isFTrueInWorld c lamType frm (MLOr (MLNot phi) psi) w
+    | otherwise             = error "isFTrueInWorld: world not in frame"
+
+  isFTrueInWorld c lamType frm (Box phi) w
+    | w `S.member` wSet frm = do
+        let trgs = targetsOf' (S.toList (accRel frm)) w
+        liftM and (mapM (isFTrueInWorld c lamType frm phi) trgs)
+    | otherwise             = error "isFTrueInWorld: world not in frame"
+
+  isFTrueInWorld c lamType frm (Diamond phi) w
+    | w `S.member` wSet frm = do
+        let trgs = targetsOf' (S.toList (accRel frm)) w
+        liftM or (mapM (isFTrueInWorld c lamType frm phi) trgs)
+    | otherwise             = error "isFTrueInWorld: world not in frame"
+
+  isFTrueInWorlds c lamType frm fml ws
+    | ws `S.isSubsetOf` wSet frm =
+        liftM and (mapM (isFTrueInWorld c lamType frm fml) (S.toList ws))
+    | otherwise             = error "isFTrueInWorlds: not all worlds in frame"
+
+  isFUniversallyTrue c lamType frm@(Frame w r) fml = do
+    sw <- satFWorlds c lamType frm fml
+    return (S.fromList sw == w)
 
 instance Show Fml where
     show (Var x)       = show x
