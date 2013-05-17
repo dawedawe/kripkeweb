@@ -104,12 +104,10 @@ instance TrueIn MLFml where
     liftM not (isTrueInWorld c lamType phi w)
 
   isTrueInWorld c lamType (MLAnd phi psi) w =
-    liftM and
-      (sequence [isTrueInWorld c lamType phi w, isTrueInWorld c lamType psi w])
+    liftM2 (&&) (isTrueInWorld c lamType phi w) (isTrueInWorld c lamType psi w)
 
   isTrueInWorld c lamType (MLOr phi psi) w =
-    liftM or
-      (sequence [isTrueInWorld c lamType phi w, isTrueInWorld c lamType psi w])
+    liftM2 (||) (isTrueInWorld c lamType phi w) (isTrueInWorld c lamType psi w)
 
   isTrueInWorld c lamType (MLImp phi psi) w =
     isTrueInWorld c lamType (MLOr (MLNot phi) psi) w
