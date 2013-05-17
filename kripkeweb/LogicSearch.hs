@@ -211,7 +211,7 @@ instance TrueIn MLFml where
         liftM and (mapM (isFTrueInWorld c lamType frm fml) (S.toList ws))
     | otherwise             = error "isFTrueInWorlds: not all worlds in frame"
 
-  isFUniversallyTrue c lamType frm@(Frame w r) fml = do
+  isFUniversallyTrue c lamType frm@(Frame w _) fml = do
     sw <- satFWorlds c lamType frm fml
     return (S.fromList sw == w)
 
