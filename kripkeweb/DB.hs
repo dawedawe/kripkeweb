@@ -438,7 +438,7 @@ symSubSet c =
 -- |Transitive subsets of R.
 transSubSets :: Connection -> IO [[(T.Text, T.Text)]]
 transSubSets c = do
-    ws   <- worldsInLinks c
+    ws      <- worldsInLinks c
     subSets <- liftM (filter (/= [])) (mapM (transWorldsOf c) ws)
     -- make sure there are no transitive violations in the transWorldsOf-sets
     let vs = [filter (hasTransViolation s) (flattenTuples s)| s <- subSets]

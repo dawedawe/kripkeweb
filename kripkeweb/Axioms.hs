@@ -35,7 +35,7 @@ reflTransSubSets c = do
     let reflTrans = filter (/= []) (map (filter (pairIn refls)) trans)
     -- generate needed reflexives to zip together the results
     let transRefls = map (makeReflTuples . flattenTuples) reflTrans
-    return (map L.nub (zipWith (++) reflTrans transRefls))
+    return (zipWith (++) reflTrans transRefls)
 
 -- |Symmetric (4) and transitive (4) subsets of R.
 symTransSubSets :: Connection -> IO [[(T.Text, T.Text)]]
