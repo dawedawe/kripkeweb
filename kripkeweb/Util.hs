@@ -54,7 +54,7 @@ flattenTuples xs = L.nub $ concatMap (\(x, y) -> [x, y]) xs
 
 -- |Take the elements out of every tuple and remove duplicates.
 flattenTupleSet :: (Eq a, Ord a) => S.Set (a, a) -> S.Set a
-flattenTupleSet xs = S.fromList $ concatMap (\(x, y) -> [x, y]) (S.toList xs)
+flattenTupleSet xs = S.unions (map (\(x, y) -> S.fromList [x, y]) (S.toList xs))
 
 -- |Pure version of relsStartingWith.
 relsStartingWith' :: (Eq a) => [(a, a)] -> a -> [(a, a)]

@@ -463,9 +463,8 @@ transSubFrames c = do
     -- make sure there are no transitive violations in the transWorldsOf-sets
     let vs = [filter (hasTransViolation s) (flattenTuples s)| s <- subSets]
     let rs = [dropRelsWithElemIn b r | (b, r) <- zip vs subSets]
-    let ws = map flattenTuples rs
-    let fr = [Frame (S.fromList w) (S.fromList r) | (w, r) <- zip ws rs]
-    return (S.fromList fr)
+    let tF = [Frame (S.fromList (flattenTuples r)) (S.fromList r) | r <- rs]
+    return (S.fromList tF)
 
 -- |Transitive subsets of R.
 transSubSets :: Connection -> IO [[(T.Text, T.Text)]]
