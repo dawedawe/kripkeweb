@@ -5,9 +5,9 @@ module LogicSearch
 , MLFml (..)
 , Quantor (..)
 , eval2B
-, isSatInBigW
-, isSatInWorld
-, isSatInWorlds
+, isTrueInWorld
+, isTrueInWorlds
+, isUniversallyTrue
 , satWorlds
 , parseFml
 ) where
@@ -23,11 +23,11 @@ import KripkeTypes
 import Model
 import Util
 
--- |Check if x is satisfied in a given world.
-class SatIn x where
-    isSatInWorld  :: Connection -> LambdaType -> x -> T.Text -> IO Bool
-    isSatInWorlds :: Connection -> LambdaType -> x -> [T.Text] -> IO Bool
-    isSatInBigW   :: Connection -> LambdaType -> x -> IO Bool
+-- |Check if x is true in ...
+class TrueIn x where
+    isTrueInWorld  :: Connection -> LambdaType -> x -> T.Text -> IO Bool
+    isTrueInWorlds :: Connection -> LambdaType -> x -> [T.Text] -> IO Bool
+    isUniversallyTrue :: Connection -> LambdaType -> x -> IO Bool
 
 -- |Worlds satisfying x.
 class SatWorlds x where
@@ -88,44 +88,44 @@ instance SatWorlds MLFml where
 
   satWorlds c lamType (Box phi) = do
     allWorlds <- worldsInLambda c lamType
-    filterM (isSatInWorld c lamType (Box phi)) allWorlds
+    filterM (isTrueInWorld c lamType (Box phi)) allWorlds
 
   satWorlds c lamType (Diamond phi) = do
     allWorlds <- worldsInLambda c lamType
-    filterM (isSatInWorld c lamType (Diamond phi)) allWorlds
+    filterM (isTrueInWorld c lamType (Diamond phi)) allWorlds
 
-instance SatIn MLFml where
-  isSatInWorld c lamType (MLVar phi) w = do
+instance TrueIn MLFml where
+  isTrueInWorld c lamType (MLVar phi) w = do
     phi' <- termAsLamType c lamType (Just w) phi
     fmls <- lambda c lamType w
     return (phi' `elem` fmls)
 
-  isSatInWorld c lamType (MLNot phi) w =
-    liftM not (isSatInWorld c lamType phi w)
+  isTrueInWorld c lamType (MLNot phi) w =
+    liftM not (isTrueInWorld c lamType phi w)
 
-  isSatInWorld c lamType (MLAnd phi psi) w =
+  isTrueInWorld c lamType (MLAnd phi psi) w =
     liftM and
-      (sequence [isSatInWorld c lamType phi w, isSatInWorld c lamType psi w])
+      (sequence [isTrueInWorld c lamType phi w, isTrueInWorld c lamType psi w])
 
-  isSatInWorld c lamType (MLOr phi psi) w =
+  isTrueInWorld c lamType (MLOr phi psi) w =
     liftM or
-      (sequence [isSatInWorld c lamType phi w, isSatInWorld c lamType psi w])
+      (sequence [isTrueInWorld c lamType phi w, isTrueInWorld c lamType psi w])
 
-  isSatInWorld c lamType (MLImp phi psi) w =
-    isSatInWorld c lamType (MLOr (MLNot phi) psi) w
+  isTrueInWorld c lamType (MLImp phi psi) w =
+    isTrueInWorld c lamType (MLOr (MLNot phi) psi) w
 
-  isSatInWorld c lamType (Box phi) w = do
+  isTrueInWorld c lamType (Box phi) w = do
     tgs <- targetsOf c w
-    liftM and (mapM (isSatInWorld c lamType phi) tgs)
+    liftM and (mapM (isTrueInWorld c lamType phi) tgs)
       
-  isSatInWorld c lamType (Diamond phi) w = do
+  isTrueInWorld c lamType (Diamond phi) w = do
     tgs <- targetsOf c w
-    liftM or (mapM (isSatInWorld c lamType phi) tgs)
+    liftM or (mapM (isTrueInWorld c lamType phi) tgs)
  
-  isSatInWorlds c lamType frm ws =
-    liftM and (mapM (isSatInWorld c lamType frm) ws)
+  isTrueInWorlds c lamType frm ws =
+    liftM and (mapM (isTrueInWorld c lamType frm) ws)
 
-  isSatInBigW c lamType frm = do
+  isUniversallyTrue c lamType frm = do
     sw <- satWorlds c lamType frm
     ws <- worldsInLambda c lamType
     return (S.fromList sw == S.fromList ws)
