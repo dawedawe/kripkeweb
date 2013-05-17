@@ -15,16 +15,13 @@ module DB
 , pathsTo
 , pathsToViaLambda
 , reflSubFrame
-, reflSubSet
 , sourcesInLinks
 , sourcesOf
 , stemLang
 , symSubFrame
-, symSubSet
 , targetsOf
 , termFrequency
 , transSubFrames
-, transSubSets
 , updatePageRank
 , worldCountInLambda
 , worldFormulas
@@ -424,27 +421,12 @@ lambdaAccum c lamType =
 --------------------------------------------------------------------------------
 -- functions for subsets with certain relation properties
 
--- |Reflexive subset of W.
-reflSubSet :: Connection -> IO [T.Text]
-reflSubSet c =
-    let q = "SELECT source from links where source = target"
-    in  liftM (map fromOnly) (query_ c q)
-
 -- |Reflexive subframe of (W, R).
 reflSubFrame :: Connection -> IO Frame
 reflSubFrame c = do
     let q = "SELECT source, target from links where source = target"
     r <- query_ c q
     return (Frame (S.fromList (flattenTuples r)) (S.fromList r))
-
--- |Symmetric subset of W.
-symSubSet :: Connection -> IO [(T.Text, T.Text)]
-symSubSet c =
-    let q = "SELECT source, target FROM links \
-            \WHERE source <> target \
-            \AND (target, source) IN \
-              \(select source, target from links)"
-    in  query_ c q
 
 symSubFrame :: Connection -> IO Frame
 symSubFrame c = do
@@ -465,15 +447,6 @@ transSubFrames c = do
     let rs = [dropRelsWithElemIn b r | (b, r) <- zip vs subSets]
     let tF = [Frame (S.fromList (flattenTuples r)) (S.fromList r) | r <- rs]
     return (S.fromList tF)
-
--- |Transitive subsets of R.
-transSubSets :: Connection -> IO [[(T.Text, T.Text)]]
-transSubSets c = do
-    ws      <- worldsInLinks c
-    subSets <- liftM (filter (/= [])) (mapM (transWorldsOf c) ws)
-    -- make sure there are no transitive violations in the transWorldsOf-sets
-    let vs = [filter (hasTransViolation s) (flattenTuples s)| s <- subSets]
-    return [dropRelsWithElemIn b r | (b, r) <- zip vs subSets]
 
 -- |Worlds that form transitive relations with the given world.
 -- There might be transitive violations between the other worlds.
