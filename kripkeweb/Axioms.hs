@@ -84,7 +84,7 @@ addSyms rels =
 -- |Make a relation symmetric.
 addRefls :: (Eq a, Ord a) => S.Set (a, a) -> S.Set (a, a)
 addRefls rels =
-    (S.fromList [(x, x) | x <- S.toList (flattenTupleSet rels)]) `S.union` rels
+    S.fromList [(x, x) | x <- S.toList (flattenTupleSet rels)] `S.union` rels
 
 -- |Drops duplicate lists, don't care about keeping order.
 dropDuplicates :: (Eq a, Ord a) => [[a]] -> [[a]]

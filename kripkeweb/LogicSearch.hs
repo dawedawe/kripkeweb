@@ -109,28 +109,28 @@ instance SatWorlds MLFml where
 
   satFWorlds c lamType (Frame w _) (MLVar phi) = do
     phi' <- termAsLamType c lamType Nothing phi
-    liftM (`intersect` (S.toList w)) (worldsWithFormula c lamType phi')
+    liftM (S.toList w `intersect`) (worldsWithFormula c lamType phi')
 
   satFWorlds c lamType frm@(Frame w _) (MLNot phi) =
-    liftM ((S.toList w) \\) (satFWorlds c lamType frm phi)
+    liftM (S.toList w \\) (satFWorlds c lamType frm phi)
 
   satFWorlds c lamType frm@(Frame w _) (MLAnd phi psi) = do
     dbWorlds <- liftM2 intersect
                   (satFWorlds c lamType frm phi) (satFWorlds c lamType frm psi)
-    return (intersect (S.toList w) dbWorlds)
+    return (S.toList w `intersect` dbWorlds)
 
   satFWorlds c lamType frm@(Frame w _) (MLOr phi psi) = do
     dbWorlds <- liftM2 union
                   (satFWorlds c lamType frm phi) (satFWorlds c lamType frm psi)
-    return (intersect (S.toList w) dbWorlds)
+    return (S.toList w `intersect` dbWorlds)
 
   satFWorlds c lamType frm (MLImp phi psi) =
     satFWorlds c lamType frm (MLOr (MLNot phi) psi)
 
-  satFWorlds c lamType frm@(Frame w _) (Box phi) = do
+  satFWorlds c lamType frm@(Frame w _) (Box phi) =
     filterM (isFTrueInWorld c lamType frm (Box phi)) (S.toList w)
 
-  satFWorlds c lamType frm@(Frame w _) (Diamond phi) = do
+  satFWorlds c lamType frm@(Frame w _) (Diamond phi) =
     filterM (isFTrueInWorld c lamType frm (Diamond phi)) (S.toList w)
 
 instance TrueIn MLFml where
