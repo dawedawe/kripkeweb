@@ -468,7 +468,7 @@ relsStartingIn c ws =
     in  query c q (Only (In ws))
 
 -- |Pure version of relsStartingIn.
-relsStartingIn' :: [(T.Text, T.Text)] -> [T.Text] -> [(T.Text, T.Text)]
+relsStartingIn' :: (Eq a) => [(a, a)] -> [a] -> [(a, a)]
 relsStartingIn' rels tgs = filter ((`elem` tgs) . fst) rels
 
 -- |Relations with the given world as the source.
@@ -478,7 +478,7 @@ relsStartingWith c w =
     in  query c q (Only w)
 
 -- |True, if not all targets of targets of w can be reached directly from w.
-hasTransViolation :: [(T.Text, T.Text)] -> T.Text -> Bool
+hasTransViolation :: (Eq a) => [(a, a)] -> a -> Bool
 hasTransViolation rels w =
     let
       relsOfW = filter (/= (w, w)) (relsStartingWith' rels w)
@@ -489,7 +489,7 @@ hasTransViolation rels w =
       tOft `L.intersect` trgsOfw /= tOft
 
 -- |Drop relations interacting with worlds, that have transitive violations.
-dropTransViolations :: [(T.Text, T.Text)] -> [(T.Text, T.Text)]
+dropTransViolations :: (Eq a) => [(a, a)] -> [(a, a)]
 dropTransViolations rels = 
     let vs = filter (hasTransViolation rels) (flattenTuples rels)
     in  dropRelsWithElemIn vs rels
