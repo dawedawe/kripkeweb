@@ -87,6 +87,18 @@ sourcesOf c t =
     liftM (map fromOnly) (query c "SELECT source FROM links WHERE target = ?"
       (Only t))
 
+-- |Relations with the given world as the source.
+relsStartingWith :: Connection -> T.Text -> IO [(T.Text, T.Text)]
+relsStartingWith c w =
+    let q = "SELECT source, target FROM links WHERE source = ?"
+    in  query c q (Only w)
+
+-- |Relations staring in one world of the given list.
+relsStartingIn :: Connection -> [T.Text] -> IO [(T.Text, T.Text)]
+relsStartingIn c ws =
+    let q = "SELECT source, target FROM links WHERE source IN ?"
+    in  query c q (Only (In ws))
+
 -- |Count of targets of a world.
 outLinkCount :: Connection -> T.Text -> IO Int
 outLinkCount c s =
@@ -460,37 +472,4 @@ transRelsOf c w = do
       -- drop possible transitive violations in transitive rels of w
       then return (dropTransViolations (L.nub (relsOfw ++ totRels)))
       else return []
-
--- |Relations staring in one world of the given list.
-relsStartingIn :: Connection -> [T.Text] -> IO [(T.Text, T.Text)]
-relsStartingIn c ws =
-    let q = "SELECT source, target FROM links WHERE source IN ?"
-    in  query c q (Only (In ws))
-
--- |Pure version of relsStartingIn.
-relsStartingIn' :: (Eq a) => [(a, a)] -> [a] -> [(a, a)]
-relsStartingIn' rels tgs = filter ((`elem` tgs) . fst) rels
-
--- |Relations with the given world as the source.
-relsStartingWith :: Connection -> T.Text -> IO [(T.Text, T.Text)]
-relsStartingWith c w =
-    let q = "SELECT source, target FROM links WHERE source = ?"
-    in  query c q (Only w)
-
--- |True, if not all targets of targets of w can be reached directly from w.
-hasTransViolation :: (Eq a) => [(a, a)] -> a -> Bool
-hasTransViolation rels w =
-    let
-      relsOfW = filter (/= (w, w)) (relsStartingWith' rels w)
-      trgsOfw = map snd relsOfW
-      totRels = filter ((/= w) . snd) (relsStartingIn' rels trgsOfw)
-      tOft    = map snd totRels
-    in 
-      tOft `L.intersect` trgsOfw /= tOft
-
--- |Drop relations interacting with worlds, that have transitive violations.
-dropTransViolations :: (Eq a) => [(a, a)] -> [(a, a)]
-dropTransViolations rels = 
-    let vs = filter (hasTransViolation rels) (flattenTuples rels)
-    in  dropRelsWithElemIn vs rels
 

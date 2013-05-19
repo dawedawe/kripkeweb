@@ -3,10 +3,13 @@
 module Util
 ( dropRelsWithElemIn
 , dropRelsWithElemInS
+, dropTransViolations
 , flattenTuples
 , flattenTupleSet
 , hasLetters
+, hasTransViolation
 , lowerString
+, relsStartingIn'
 , relsStartingWith'
 , targetsOf'
 , trim
@@ -64,4 +67,24 @@ relsStartingWith' rels w = filter ((== w) . fst) rels
 targetsOf' :: (Eq a) => [(a, a)] -> a -> [a]
 targetsOf' rels w = map snd (relsStartingWith' rels w)
 
+-- |Pure version of relsStartingIn.
+relsStartingIn' :: (Eq a) => [(a, a)] -> [a] -> [(a, a)]
+relsStartingIn' rels tgs = filter ((`elem` tgs) . fst) rels
+
+-- |True, if not all targets of targets of w can be reached directly from w.
+hasTransViolation :: (Eq a) => [(a, a)] -> a -> Bool
+hasTransViolation rels w =
+    let
+      relsOfW = filter (/= (w, w)) (relsStartingWith' rels w)
+      trgsOfw = map snd relsOfW
+      totRels = filter ((/= w) . snd) (relsStartingIn' rels trgsOfw)
+      tOft    = map snd totRels
+    in 
+      tOft `L.intersect` trgsOfw /= tOft
+
+-- |Drop relations interacting with worlds, that have transitive violations.
+dropTransViolations :: (Eq a) => [(a, a)] -> [(a, a)]
+dropTransViolations rels = 
+    let vs = filter (hasTransViolation rels) (flattenTuples rels)
+    in  dropRelsWithElemIn vs rels
 
