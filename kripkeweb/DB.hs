@@ -441,17 +441,14 @@ symSubFrame c = do
 transSubFrames :: Connection -> IO (S.Set Frame)
 transSubFrames c = do
     ws      <- worldsInLinks c
-    subSets <- liftM (filter (/= [])) (mapM (transWorldsOf c) ws)
-    -- make sure there are no transitive violations in the transWorldsOf-sets
-    let vs = [filter (hasTransViolation s) (flattenTuples s)| s <- subSets]
-    let rs = [dropRelsWithElemIn b r | (b, r) <- zip vs subSets]
-    let tF = [Frame (S.fromList (flattenTuples r)) (S.fromList r) | r <- rs]
+    tRels <- liftM (filter (/= [])) (mapM (transRelsOf c) ws)
+    -- make sure there are no transitive violations in the transRelsOf-sets
+    let tF = [Frame (S.fromList (flattenTuples r)) (S.fromList r) | r <- tRels]
     return (S.fromList tF)
 
--- |Worlds that form transitive relations with the given world.
--- There might be transitive violations between the other worlds.
-transWorldsOf :: Connection -> T.Text -> IO [(T.Text, T.Text)]
-transWorldsOf c w = do
+-- |Relations that form transitive relations with the given world.
+transRelsOf :: Connection -> T.Text -> IO [(T.Text, T.Text)]
+transRelsOf c w = do
     -- relations of w without a possible reflexive one
     relsOfw <- liftM (filter (/= (w, w))) (relsStartingWith c w)
     let trgsOfw = map snd relsOfw
@@ -460,7 +457,8 @@ transWorldsOf c w = do
                  (relsStartingIn c trgsOfw)
     let tOft    = map snd totRels
     if tOft `L.intersect` trgsOfw == tOft   -- w can reach targets of targets
-      then return (L.nub (relsOfw ++ totRels))
+      -- drop possible transitive violations in transitive rels of w
+      then return (dropTransViolations (L.nub (relsOfw ++ totRels)))
       else return []
 
 -- |Relations staring in one world of the given list.
@@ -489,4 +487,10 @@ hasTransViolation rels w =
       tOft    = map snd totRels
     in 
       tOft `L.intersect` trgsOfw /= tOft
+
+-- |Drop relations interacting with worlds, that have transitive violations.
+dropTransViolations :: [(T.Text, T.Text)] -> [(T.Text, T.Text)]
+dropTransViolations rels = 
+    let vs = filter (hasTransViolation rels) (flattenTuples rels)
+    in  dropRelsWithElemIn vs rels
 
