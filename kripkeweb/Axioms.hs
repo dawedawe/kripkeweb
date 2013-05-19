@@ -94,14 +94,15 @@ dropDuplicates = map S.toList . L.nub . map S.fromList
 -- test functions for the axioms
 
 -- |Test if K (smallest modal logic): [](p -> q) -> ([]p -> []q) holds in the
--- whole database model.
-isBigK :: Connection -> LambdaType -> MLFml -> MLFml -> IO Bool
-isBigK c lamType (MLVar p) (MLVar q) = do
-    let prem = Box (MLImp (MLVar p) (MLVar q))
-    let conc = MLImp (Box (MLVar p)) (Box (MLVar q))
-    let frm  = MLImp prem conc
-    isUniversallyTrue c lamType frm
-isBigK _ _       _         _         = error "isBigK: undefined parameters"
+-- given frame.
+isBigK :: Connection -> LambdaType -> Frame -> MLFml -> MLFml -> IO Bool
+isBigK c lamType frm p@(MLVar _) q@(MLVar _) = do
+    let prem = Box (MLImp p q)
+    let conc = MLImp (Box p) (Box q)
+    let fml  = MLImp prem conc
+    isFUniversallyTrue c lamType frm fml
+isBigK _ _       _   _           _           =
+    error "isBigK: undefined parameters"
 
 -- |Test if T (reflexivity): []p -> p holds in the given frame.
 isBigT :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
@@ -112,11 +113,11 @@ isBigT _ _       _   _           = error "isBigT: undefined parameters"
 
 -- |Test if D (seriell): []p -> <>p All w: Ex v:(wRv) holds in the whole
 -- database model.
-isBigD :: Connection -> LambdaType -> MLFml -> IO Bool
-isBigD c lamType p@(MLVar v) =
-    let frm = MLImp (Box p) (Diamond p)
-    in  isUniversallyTrue c lamType frm
-isBigD _ _       _           = error "isBigD: undefined parameters"
+isBigD :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
+isBigD c lamType frm p@(MLVar _) =
+    let fml = MLImp (Box p) (Diamond p)
+    in  isFUniversallyTrue c lamType frm fml
+isBigD _ _       _   _           = error "isBigD: undefined parameters"
 
 -- |Test if B (symmetry): p -> []<>p holds in the given frame.
 isBigB :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
