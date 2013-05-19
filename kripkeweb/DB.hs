@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module DB
-( documentFrequency
+( dbFrame
+, documentFrequency
 , formulasInLambda
 , initPageRankTable
 , insertLambdaRelation
@@ -432,6 +433,12 @@ lambdaAccum c lamType =
  
 --------------------------------------------------------------------------------
 -- functions for subsets with certain relation properties
+
+dbFrame :: Connection -> IO Frame
+dbFrame c = do
+    let q = "SELECT source, target FROM links"
+    rels <- liftM S.fromList (query_ c q)
+    return (Frame (flattenTupleSet rels) rels)
 
 -- |Reflexive subframe of (W, R).
 reflSubFrame :: Connection -> IO Frame
