@@ -95,47 +95,46 @@ dropDuplicates = map S.toList . L.nub . map S.fromList
 
 -- |Test if K (smallest modal logic): [](p -> q) -> ([]p -> []q) holds in the
 -- given frame.
-isBigK :: Connection -> LambdaType -> Frame -> MLFml -> MLFml -> IO Bool
-isBigK c lamType frm p@(MLVar _) q@(MLVar _) = do
+isK :: Connection -> LambdaType -> Frame -> MLFml -> MLFml -> IO Bool
+isK c lamType frm p@(MLVar _) q@(MLVar _) = do
     let prem = Box (MLImp p q)
     let conc = MLImp (Box p) (Box q)
     let fml  = MLImp prem conc
     isFUniversallyTrue c lamType frm fml
-isBigK _ _       _   _           _           =
-    error "isBigK: undefined parameters"
+isK _ _       _   _           _           = error "isBigK: undefined parameters"
 
 -- |Test if T (reflexivity): []p -> p holds in the given frame.
-isBigT :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
-isBigT c lamType frm p@(MLVar v) =
+isT :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
+isT c lamType frm p@(MLVar _) =
     let fml = MLImp (Box p) p
     in  isFUniversallyTrue c lamType frm fml
-isBigT _ _       _   _           = error "isBigT: undefined parameters"
+isT _ _       _   _           = error "isBigT: undefined parameters"
 
 -- |Test if D (seriell): []p -> <>p All w: Ex v:(wRv) holds in the whole
 -- database model.
-isBigD :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
-isBigD c lamType frm p@(MLVar _) =
+isD :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
+isD c lamType frm p@(MLVar _) =
     let fml = MLImp (Box p) (Diamond p)
     in  isFUniversallyTrue c lamType frm fml
-isBigD _ _       _   _           = error "isBigD: undefined parameters"
+isD _ _       _   _           = error "isBigD: undefined parameters"
 
 -- |Test if B (symmetry): p -> []<>p holds in the given frame.
-isBigB :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
-isBigB c lamType frm p@(MLVar v) =
+isB :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
+isB c lamType frm p@(MLVar _) =
     let fml = MLImp p (Box (Diamond p))
     in  isFTrueInWorlds c lamType frm fml (wSet frm)
-isBigB _ _       _   _           = error "isBigB: undefined parameters"
+isB _ _       _   _           = error "isBigB: undefined parameters"
 
 -- |Test if 4 (transitivity): []p -> [][]p holds in the given frame.
-isBig4 :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
-isBig4 c lamType frm p@(MLVar _) =
+is4 :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
+is4 c lamType frm p@(MLVar _) =
     let fml = MLImp (Box p) (Box (Box p))
     in  isFTrueInWorlds c lamType frm fml (wSet frm)
-isBig4 _ _       _   _           = error "isBig4: undefined parameters"
+is4 _ _       _   _           = error "isBig4: undefined parameters"
 
 -- |Test if 5 (refl. sym. trans.): <>p -> []<>p holds in given frame.
-isBig5 :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
-isBig5 c lamType frm p@(MLVar _) =
+is5 :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
+is5 c lamType frm p@(MLVar _) =
     let fml = MLImp (Diamond p) (Box (Diamond p))
     in  isFTrueInWorlds c lamType frm fml (wSet frm)
-isBig5 _ _       _   _           = error "isBig5: undefined parameters"
+is5 _ _       _   _           = error "isBig5: undefined parameters"
