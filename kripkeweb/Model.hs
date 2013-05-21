@@ -3,14 +3,11 @@ module Model
 , buildRelativeR
 , buildLambdaStore
 , getAndStoreLambdaRel
-, isBoxPhi
-, isDiamondPhi
 , lambda
 , termAsLamType
 ) where
 
 import Prelude hiding (pi)
-import Control.Monad (liftM)
 import qualified Data.Text as T
 import qualified Data.Set as S
 import Database.PostgreSQL.Simple
@@ -25,35 +22,6 @@ import WebSpider
 -- |lambda function of a Kripke Model: Formulas of given world.
 lambda :: Connection -> LambdaType -> T.Text -> IO [T.Text]
 lambda = worldFormulas
-
--- |Is phi in the formula set of the given world?
-phiInW :: Connection -> LambdaType -> T.Text -> T.Text -> IO Bool
-phiInW c lamType phi w = do
-    -- deal with optional stemming
-    sa <- case lamType of
-            Stem -> stemLang c w
-            _    -> return T.empty
-    let phi' = if sa == T.empty
-                 then phi
-                 else stem ((myStemAlgo . read . show) sa) phi
-
-    liftM (phi' `elem`) (lambda c lamType w)
-
--- |Is []phi for the given world?
-isBoxPhi :: Connection -> LambdaType -> T.Text -> T.Text -> IO Bool
-isBoxPhi c lamType = isQuantorPhi c lamType and
-
--- |Is <>phi for the given world?
-isDiamondPhi :: Connection -> LambdaType -> T.Text -> T.Text -> IO Bool
-isDiamondPhi c lamType = isQuantorPhi c lamType or
-
--- |Generic Quantor.
-isQuantorPhi :: Connection -> LambdaType -> ([Bool] -> Bool) -> T.Text ->
-                T.Text -> IO Bool
-isQuantorPhi c lamType q w phi = do
-    aw <- targetsOf c w
-    bs <- mapM (phiInW c lamType phi) aw
-    return (q bs)
 
 -- |Fetch unstemmed/stemmed formulas of a single url and store them.
 getAndStoreLambdaRel :: Connection -> Maybe Proxy -> T.Text -> IO ()
