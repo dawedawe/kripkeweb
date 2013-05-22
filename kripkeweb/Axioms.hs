@@ -103,7 +103,7 @@ isK c lamType frm p@(MLVar _) q@(MLVar _) = do
     isFUniversallyTrue c lamType frm fml
 isK _ _       _   _           _           = error "isBigK: undefined parameters"
 
--- |Test if T (reflexivity): p -> <>p  (alt: []p -> p) holds in the given frame.
+-- |Test if T (reflexive): p -> <>p  (alt: []p -> p) holds in the given frame.
 isT :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
 isT c lamType frm p@(MLVar _) =
     let fml = MLImp p (Diamond p)
@@ -118,21 +118,22 @@ isD c lamType frm p@(MLVar _) =
     in  isFUniversallyTrue c lamType frm fml
 isD _ _       _   _           = error "isBigD: undefined parameters"
 
--- |Test if B (symmetry): p -> []<>p holds in the given frame.
+-- |Test if B (symmetric): p -> []<>p holds in the given frame.
 isB :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
 isB c lamType frm p@(MLVar _) =
     let fml = MLImp p (Box (Diamond p))
     in  isFTrueInWorlds c lamType frm fml (wSet frm)
 isB _ _       _   _           = error "isBigB: undefined parameters"
 
--- |Test if 4 (transitivity): []p -> [][]p holds in the given frame.
+-- |Test if 4 (transitive): <><>p -> <>p (alt: []p -> [][]p) holds in the given
+-- frame.
 is4 :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
 is4 c lamType frm p@(MLVar _) =
-    let fml = MLImp (Box p) (Box (Box p))
+    let fml = MLImp (Diamond (Diamond p)) (Diamond p)
     in  isFTrueInWorlds c lamType frm fml (wSet frm)
 is4 _ _       _   _           = error "isBig4: undefined parameters"
 
--- |Test if 5 (refl. sym. trans.): <>p -> []<>p holds in given frame.
+-- |Test if 5 (euclidean): <>p -> []<>p holds in given frame.
 is5 :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
 is5 c lamType frm p@(MLVar _) =
     let fml = MLImp (Diamond p) (Box (Diamond p))
