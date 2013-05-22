@@ -4,6 +4,7 @@ module LogicSearch
 ( Fml (..)
 , MLFml (..)
 , Quantor (..)
+, TrueIn
 , eval2B
 , isFTrueInWorld
 , isFTrueInWorlds
@@ -132,6 +133,33 @@ instance SatWorlds MLFml where
 
   satFWorlds c lamType frm@(Frame w _) (Diamond phi) =
     filterM (isFTrueInWorld c lamType frm (Diamond phi)) (S.toList w)
+
+instance TrueIn Fml where
+  isTrueInWorld c lamType (Var phi) w = isTrueInWorld c lamType (MLVar phi) w
+
+  isTrueInWorld c lamType (Not phi) w =
+    liftM not (isTrueInWorld c lamType phi w)
+
+  isTrueInWorld c lamType (And phi psi) w =
+    liftM2 (&&) (isTrueInWorld c lamType phi w) (isTrueInWorld c lamType psi w)
+
+  isTrueInWorld c lamType (Or phi psi) w =
+    liftM2 (||) (isTrueInWorld c lamType phi w) (isTrueInWorld c lamType psi w)
+
+  isTrueInWorld c lamType (Imp phi psi) w =
+    isTrueInWorld c lamType (Or (Not phi) psi) w
+
+  isTrueInWorlds c lamType fml ws =
+    liftM and (mapM (isTrueInWorld c lamType fml) ws)
+
+  isUniversallyTrue c lamType fml = do
+    sw <- satWorlds c lamType fml
+    ws <- worldsInLambda c lamType
+    return (S.fromList sw == S.fromList ws)
+
+  isFTrueInWorld     = undefined
+  isFTrueInWorlds    = undefined
+  isFUniversallyTrue = undefined
 
 instance TrueIn MLFml where
   isTrueInWorld c lamType (MLVar phi) w = do
