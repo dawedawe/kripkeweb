@@ -103,10 +103,10 @@ isK c lamType frm p@(MLVar _) q@(MLVar _) = do
     isFUniversallyTrue c lamType frm fml
 isK _ _       _   _           _           = error "isBigK: undefined parameters"
 
--- |Test if T (reflexivity): []p -> p holds in the given frame.
+-- |Test if T (reflexivity): p -> <>p  (alt: []p -> p) holds in the given frame.
 isT :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
 isT c lamType frm p@(MLVar _) =
-    let fml = MLImp (Box p) p
+    let fml = MLImp p (Diamond p)
     in  isFUniversallyTrue c lamType frm fml
 isT _ _       _   _           = error "isBigT: undefined parameters"
 
