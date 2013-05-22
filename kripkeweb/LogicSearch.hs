@@ -33,7 +33,10 @@ class TrueIn x where
     isTrueInWorld     :: Connection -> LambdaType -> x -> T.Text -> IO Bool
     isTrueInWorlds    :: Connection -> LambdaType -> x -> [T.Text] -> IO Bool
     isUniversallyTrue :: Connection -> LambdaType -> x -> IO Bool
-    -- take the frame as an argument instead of out of the database
+
+-- |Like TrueIn but take the frame as an argument instead of out of the
+-- database.
+class FTrueIn x where
     isFTrueInWorld     :: Connection -> LambdaType -> Frame -> x -> T.Text ->
                           IO Bool
     isFTrueInWorlds    :: Connection -> LambdaType -> Frame -> x ->
@@ -43,6 +46,9 @@ class TrueIn x where
 -- |Worlds satisfying x.
 class SatWorlds x where
     satWorlds :: Connection -> LambdaType -> x -> IO [T.Text]
+
+-- |Worlds in frame satisfying x.
+class FSatWorlds x where
     satFWorlds :: Connection -> LambdaType -> Frame -> x -> IO [T.Text]
 
 class Eval2Bool x where
@@ -81,8 +87,6 @@ instance SatWorlds Fml where
   satWorlds c lamType (Imp phi psi) =
     satWorlds c lamType (Or (Not phi) psi)
 
-  satFWorlds = undefined
-
 instance SatWorlds MLFml where
   satWorlds c lamType (MLVar phi) = do
     phi' <- termAsLamType c lamType Nothing phi
@@ -108,6 +112,7 @@ instance SatWorlds MLFml where
     allWorlds <- worldsInLambda c lamType
     filterM (isTrueInWorld c lamType (Diamond phi)) allWorlds
 
+instance FSatWorlds MLFml where
   satFWorlds c lamType (Frame w _) (MLVar phi) = do
     phi' <- termAsLamType c lamType Nothing phi
     liftM (S.toList w `intersect`) (worldsWithFormula c lamType phi')
@@ -157,10 +162,6 @@ instance TrueIn Fml where
     ws <- worldsInLambda c lamType
     return (S.fromList sw == S.fromList ws)
 
-  isFTrueInWorld     = undefined
-  isFTrueInWorlds    = undefined
-  isFUniversallyTrue = undefined
-
 instance TrueIn MLFml where
   isTrueInWorld c lamType (MLVar phi) w = do
     phi' <- termAsLamType c lamType (Just w) phi
@@ -195,6 +196,7 @@ instance TrueIn MLFml where
     ws <- worldsInLambda c lamType
     return (S.fromList sw == S.fromList ws)
 
+instance FTrueIn MLFml where
   isFTrueInWorld c lamType frm (MLVar phi) w
     | w `S.member` wSet frm = isTrueInWorld c lamType (MLVar phi) w
     | otherwise             = error "isFTrueInWorld: world not in frame"
