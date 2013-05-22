@@ -457,7 +457,7 @@ symSubFrame c = do
     return (Frame (S.fromList (flattenTuples r)) (S.fromList r))
 
 -- |Transitive subframe of (W, R). Be strict about transitive properties:
--- xRy ^ yRz -> xRz with x, y, z are three different members
+-- xRy ^ yRz -> xRz with x, y, z are three different members, min. W size = 3.
 transSubFrames :: Connection -> IO (S.Set Frame)
 transSubFrames c = do
     ws      <- worldsInLinks c
