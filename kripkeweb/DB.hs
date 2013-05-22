@@ -456,13 +456,14 @@ symSubFrame c = do
     r <- query_ c q
     return (Frame (S.fromList (flattenTuples r)) (S.fromList r))
 
--- |Transitive subframe of (W, R).
+-- |Transitive subframe of (W, R). Be strict about transitive properties:
+-- xRy ^ yRz -> xRz with x, y, z are three different members
 transSubFrames :: Connection -> IO (S.Set Frame)
 transSubFrames c = do
     ws      <- worldsInLinks c
     tRels <- liftM (filter (/= [])) (mapM (transRelsOf c) ws)
-    -- make sure there are no transitive violations in the transRelsOf-sets
-    let tF = [Frame (S.fromList (flattenTuples r)) (S.fromList r) | r <- tRels]
+    let tF = [Frame (S.fromList rworlds) (S.fromList r) |
+               r <- tRels, let rworlds = flattenTuples r, length rworlds > 2]
     return (S.fromList tF)
 
 -- |Relations that form transitive relations with the given world.
