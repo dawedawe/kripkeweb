@@ -3,12 +3,14 @@
 module LogicSearch
 ( Fml (..)
 , MLFml (..)
+, PTrueIn
 , Quantor (..)
 , TrueIn
 , eval2B
 , isFTrueInWorld
 , isFTrueInWorlds
 , isFUniversallyTrue
+, isPTrueInWorld
 , isTrueInWorld
 , isTrueInWorlds
 , isUniversallyTrue
@@ -42,6 +44,9 @@ class FTrueIn x where
     isFTrueInWorlds    :: Connection -> LambdaType -> Frame -> x ->
                           S.Set T.Text -> IO Bool
     isFUniversallyTrue :: Connection -> LambdaType -> Frame -> x -> IO Bool
+
+class PTrueIn x where
+    isPTrueInWorld :: Model -> T.Text -> x -> Bool
 
 -- |Worlds satisfying x.
 class SatWorlds x where
@@ -157,10 +162,22 @@ instance TrueIn Fml where
   isTrueInWorlds c lamType fml ws =
     liftM and (mapM (isTrueInWorld c lamType fml) ws)
 
-  isUniversallyTrue c lamType fml = do
-    sw <- satWorlds c lamType fml
-    ws <- worldsInLambda c lamType
-    return (S.fromList sw == S.fromList ws)
+  isUniversallyTrue c lamType fml =
+    liftM2 eqListElems (satWorlds c lamType fml) (worldsInLambda c lamType)
+
+instance PTrueIn Fml where
+  isPTrueInWorld (Model _ lam) w (Var phi) = phi `elem` lam w
+
+  isPTrueInWorld mdl w (Not phi) = not (isPTrueInWorld mdl w phi)
+
+  isPTrueInWorld mdl w (And phi psi) =
+    isPTrueInWorld mdl w phi && isPTrueInWorld mdl w psi
+
+  isPTrueInWorld mdl w (Or phi psi) =
+    isPTrueInWorld mdl w phi || isPTrueInWorld mdl w psi
+
+  isPTrueInWorld mdl w (Imp phi psi) =
+    isPTrueInWorld mdl w (Not phi) || isPTrueInWorld mdl w psi
 
 instance TrueIn MLFml where
   isTrueInWorld c lamType (MLVar phi) w = do
@@ -191,10 +208,8 @@ instance TrueIn MLFml where
   isTrueInWorlds c lamType fml ws =
     liftM and (mapM (isTrueInWorld c lamType fml) ws)
 
-  isUniversallyTrue c lamType fml = do
-    sw <- satWorlds c lamType fml
-    ws <- worldsInLambda c lamType
-    return (S.fromList sw == S.fromList ws)
+  isUniversallyTrue c lamType fml =
+    liftM2 eqListElems (satWorlds c lamType fml) (worldsInLambda c lamType)
 
 instance FTrueIn MLFml where
   isFTrueInWorld c lamType frm (MLVar phi) w
