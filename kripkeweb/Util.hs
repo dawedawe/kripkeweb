@@ -4,6 +4,7 @@ module Util
 ( dropRelsWithElemIn
 , dropRelsWithElemInS
 , dropTransViolations
+, eqListElems
 , flattenTuples
 , flattenTupleSet
 , hasLetters
@@ -41,6 +42,10 @@ unquote s =
 trim :: String -> String
 trim = f . f
     where f = reverse . dropWhile isSpace
+
+-- |True, if both lists contain the same elements.
+eqListElems :: (Ord a) => [a] -> [a] -> Bool
+eqListElems x y = S.fromList x == S.fromList y
 
 -- |Drop relations containing one or two elements of the given list.
 dropRelsWithElemIn :: (Eq a) => [a] -> [(a, a)] -> [(a, a)]
