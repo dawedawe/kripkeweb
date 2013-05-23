@@ -5,17 +5,21 @@ module KripkeTypes
 , LambdaEntry (..)
 , LambdaRels (..)
 , LambdaType (..)
+, Model (..)
 , MyStemAlgo (..)
 , OneToOne (..)
 , OneToN (..)
 , OneToNtuples (..)
 , PageRankEntry (..)
+, lambdaPure
 , oToN2OneToOnes
 , oToNtuples2LambdaEntry
 ) where
 
 import Control.Applicative ((<$>), (<*>))
 import Data.Text
+import qualified Data.Map as M
+import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToRow
@@ -24,6 +28,12 @@ import NLP.Snowball (Algorithm (..))
 
 import Util (unquote)
 
+-- |Type for a Kripke-Model.
+data Model = Model { frame      :: Frame
+                   , lambdaFunc :: Text -> [Text]
+                   }
+
+-- |Type for a Kripke-Frame.
 data Frame = Frame { wSet   :: S.Set Text
                    , accRel :: S.Set (Text, Text)
                    } deriving (Eq, Ord, Show)
@@ -39,6 +49,10 @@ data LambdaType = Raw
                 | Stem
                 | Soundex
                   deriving (Eq, Read, Show)
+
+-- |Pure version of the lambda function.
+lambdaPure :: M.Map Text [Text] -> Text -> [Text]
+lambdaPure mp w = fromMaybe [] (M.lookup w mp)
 
 --------------------------------------------------------------------------------
 -- Types for interaction with the database
@@ -108,22 +122,22 @@ oToNtuples2LambdaEntry (OneToNtuples s ts) =
 newtype MyStemAlgo = MyStemAlgo { myStemAlgo :: Algorithm }
 
 instance Show MyStemAlgo where
-        show (MyStemAlgo  Danish)     = "Danish"
-        show (MyStemAlgo  Dutch)      = "Dutch"
-        show (MyStemAlgo  English)    = "English"
-        show (MyStemAlgo  Finnish)    = "Finnish"
-        show (MyStemAlgo  French)     = "French"
-        show (MyStemAlgo  German)     = "German"
-        show (MyStemAlgo  Hungarian)  = "Hungarian"
-        show (MyStemAlgo  Italian)    = "Italian"
-        show (MyStemAlgo  Norwegian)  = "Norwegian"
-        show (MyStemAlgo  Portuguese) = "Portuguese"
-        show (MyStemAlgo  Romanian)   = "Romanian"
-        show (MyStemAlgo  Russian)    = "Russian"
-        show (MyStemAlgo  Spanish)    = "Spanish"
-        show (MyStemAlgo  Swedish)    = "Swedish"
-        show (MyStemAlgo  Turkish)    = "Turkish"
-        show (MyStemAlgo  Porter)     = "Porter"
+    show (MyStemAlgo  Danish)     = "Danish"
+    show (MyStemAlgo  Dutch)      = "Dutch"
+    show (MyStemAlgo  English)    = "English"
+    show (MyStemAlgo  Finnish)    = "Finnish"
+    show (MyStemAlgo  French)     = "French"
+    show (MyStemAlgo  German)     = "German"
+    show (MyStemAlgo  Hungarian)  = "Hungarian"
+    show (MyStemAlgo  Italian)    = "Italian"
+    show (MyStemAlgo  Norwegian)  = "Norwegian"
+    show (MyStemAlgo  Portuguese) = "Portuguese"
+    show (MyStemAlgo  Romanian)   = "Romanian"
+    show (MyStemAlgo  Russian)    = "Russian"
+    show (MyStemAlgo  Spanish)    = "Spanish"
+    show (MyStemAlgo  Swedish)    = "Swedish"
+    show (MyStemAlgo  Turkish)    = "Turkish"
+    show (MyStemAlgo  Porter)     = "Porter"
 
 instance Read MyStemAlgo where
     readsPrec _ s = case unquote s of
