@@ -2,6 +2,7 @@
 
 module DB
 ( dbFrame
+, dbModel
 , documentFrequency
 , formulasInLambda
 , initPageRankTable
@@ -40,6 +41,7 @@ module DB
 
 import Control.Monad (liftM, when)
 import qualified Data.List as L
+import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Database.PostgreSQL.Simple
@@ -434,11 +436,26 @@ lambdaAccum c lamType =
 --------------------------------------------------------------------------------
 -- functions for subsets with certain relation properties
 
+-- |Kripke-Model as it is stored in the database.
+dbModel :: Connection -> LambdaType -> IO Model
+dbModel c lamType = do
+    frm <- dbFrame c
+    mp  <- lambdaMap c lamType
+    return (Model frm (lambdaPure mp))
+
+-- |Kripke-Frame as it is stored in the database.
 dbFrame :: Connection -> IO Frame
 dbFrame c = do
     let q = "SELECT source, target FROM links"
     rels <- liftM S.fromList (query_ c q)
     return (Frame (flattenTupleSet rels) rels)
+
+-- |Map of worlds and their formulas.
+lambdaMap :: Connection -> LambdaType -> IO (M.Map T.Text [T.Text])
+lambdaMap c lamType = do
+    lamWs <- worldsInLambda c lamType
+    wFmls <- mapM (worldFormulas c lamType) lamWs
+    return (M.fromList (zip lamWs wFmls))
 
 -- |Reflexive subframe of (W, R).
 reflSubFrame :: Connection -> IO Frame
@@ -447,6 +464,7 @@ reflSubFrame c = do
     r <- query_ c q
     return (Frame (S.fromList (flattenTuples r)) (S.fromList r))
 
+-- |Symmetric subframe of (W, R).
 symSubFrame :: Connection -> IO Frame
 symSubFrame c = do
     let q = "SELECT source, target FROM links \
