@@ -7,9 +7,8 @@ module Model
 , termAsLamType
 ) where
 
-import Prelude hiding (pi)
-import qualified Data.Text as T
 import qualified Data.Set as S
+import qualified Data.Text as T
 import Database.PostgreSQL.Simple
 import NLP.Snowball (stem)
 import Text.PhoneticCode.Soundex (soundexNARA)
