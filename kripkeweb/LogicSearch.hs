@@ -1,12 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module LogicSearch
-( Fml (..)
+( AsLambdaType
+, Fml (..)
 , MLFml (..)
 , PTrueIn
 , Quantor (..)
 , TrueIn
 , eval2B
+, fmlAsLambdaType
 , isFTrueInWorld
 , isFTrueInWorlds
 , isFUniversallyTrue
@@ -55,6 +57,10 @@ class SatWorlds x where
 -- |Worlds in frame satisfying x.
 class FSatWorlds x where
     satFWorlds :: Connection -> LambdaType -> Frame -> x -> IO [T.Text]
+
+-- |Stuff that can be transformed to other LambdaType representations.
+class AsLambdaType x where
+    fmlAsLambdaType :: Connection -> LambdaType -> Maybe T.Text -> x -> IO x
 
 class Eval2Bool x where
     eval2B :: Connection -> LambdaType -> x -> IO Bool
@@ -260,6 +266,46 @@ instance FTrueIn MLFml where
     sw <- satFWorlds c lamType frm fml
     return (S.fromList sw == w)
 
+instance AsLambdaType Fml where
+    fmlAsLambdaType c lamType w (Var v) = do
+        v' <- termAsLamType c lamType w v
+        return (Var v')
+    fmlAsLambdaType c lamType w (Not phi) = do
+        phi' <- fmlAsLambdaType c lamType w phi
+        return (Not phi')
+    fmlAsLambdaType c lamType w (And phi psi) = do
+        phi' <- fmlAsLambdaType c lamType w phi
+        psi' <- fmlAsLambdaType c lamType w psi
+        return (And phi' psi')
+    fmlAsLambdaType c lamType w (Or phi psi) = do
+        phi' <- fmlAsLambdaType c lamType w phi
+        psi' <- fmlAsLambdaType c lamType w psi
+        return (Or phi' psi')
+    fmlAsLambdaType c lamType w (Imp phi psi) = do
+        phi' <- fmlAsLambdaType c lamType w phi
+        psi' <- fmlAsLambdaType c lamType w psi
+        return (Imp phi' psi')
+
+instance AsLambdaType MLFml where
+    fmlAsLambdaType c lamType w (MLVar v) = do
+        v' <- termAsLamType c lamType w v
+        return (MLVar v')
+    fmlAsLambdaType c lamType w (MLNot phi) = do
+        phi' <- fmlAsLambdaType c lamType w phi
+        return (MLNot phi')
+    fmlAsLambdaType c lamType w (MLAnd phi psi) = do
+        phi' <- fmlAsLambdaType c lamType w phi
+        psi' <- fmlAsLambdaType c lamType w psi
+        return (MLAnd phi' psi')
+    fmlAsLambdaType c lamType w (MLOr phi psi) = do
+        phi' <- fmlAsLambdaType c lamType w phi
+        psi' <- fmlAsLambdaType c lamType w psi
+        return (MLOr phi' psi')
+    fmlAsLambdaType c lamType w (MLImp phi psi) = do
+        phi' <- fmlAsLambdaType c lamType w phi
+        psi' <- fmlAsLambdaType c lamType w psi
+        return (MLImp phi' psi')
+
 instance Show Fml where
     show (Var x)       = show x
     show (Not (Var x)) = "!(" ++ show (Var x) ++ ")"
@@ -289,6 +335,9 @@ instance Eval2Bool Quantor where
 
     eval2B c lamType (Ex xs prd) =
       liftM or (mapM (prd c lamType) xs)
+
+--------------------------------------------------------------------------------
+-- parsing related functions
 
 instance Read Fml where
     readsPrec _ s = [(parseFml s, "")]
@@ -365,3 +414,4 @@ takeTillParenBalanced (s:ss)  o c =
     if o == c
       then ""
       else s : takeTillParenBalanced ss o c
+
