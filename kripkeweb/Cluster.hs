@@ -1,6 +1,7 @@
 module Cluster
 ( boolsDist
-, posFmlSpace
+, fmlSpacePos
+, fmlSpacePoses
 ) where
 
 import qualified Data.Text as T
@@ -11,12 +12,18 @@ import KripkeTypes
 import LogicSearch
 import Model
 
--- |Position of a world with regard to a list of formulas spanning a space.
-posFmlSpace :: (PTrueIn f) => Connection -> LambdaType -> [f] -> T.Text ->
-               IO [Bool]
-posFmlSpace c lamType fmls w = do
+-- |fmlSpacePos vectors of all given worlds.
+fmlSpacePoses :: (AsLambdaType f, PTrueIn f) => Connection -> LambdaType ->
+                 [f] -> [T.Text] -> IO [[Bool]]
+fmlSpacePoses c lamType fmls ws = do
     dbMod <- dbModel c lamType
-    return (map (isPTrueInWorld dbMod w) fmls)
+    fmls' <- mapM (fmlAsLambdaType c lamType Nothing) fmls
+    return (map (fmlSpacePos dbMod fmls') ws)
+
+-- |Position of a world with regard to a list of formulas spanning a space.
+-- Expects the formulas to be already in the right LambdaType.
+fmlSpacePos :: (PTrueIn f) => Model -> [f] -> T.Text -> [Bool]
+fmlSpacePos mdl fmls w = map (isPTrueInWorld mdl w) fmls
 
 -- |Distance of two Bool Lists.
 boolsDist :: [Bool] -> [Bool] -> Double
