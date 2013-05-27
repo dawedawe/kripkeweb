@@ -4,8 +4,12 @@ module Cluster
 , fmlSpacePoses
 ) where
 
+import qualified Data.List as L
+import Data.Maybe (fromJust)
+import qualified Data.Set as S
 import qualified Data.Text as T
 import Database.PostgreSQL.Simple
+import System.Random
 
 import DB
 import KripkeTypes
@@ -13,12 +17,10 @@ import LogicSearch
 import Model
 
 -- |fmlSpacePos vectors of all given worlds.
-fmlSpacePoses :: (AsLambdaType f, PTrueIn f) => Connection -> LambdaType ->
-                 [f] -> [T.Text] -> IO [[Bool]]
-fmlSpacePoses c lamType fmls ws = do
-    dbMod <- dbModel c lamType
-    fmls' <- mapM (fmlAsLambdaType c lamType Nothing) fmls
-    return (map (fmlSpacePos dbMod fmls') ws)
+fmlSpacePoses :: (AsLambdaType f, PTrueIn f) => Model -> [f] -> [T.Text] ->
+                 [[Bool]]
+fmlSpacePoses mdl@(Model (Frame w r) _) fmls ws =
+    map (fmlSpacePos mdl fmls) (S.toList w)
 
 -- |Position of a world with regard to a list of formulas spanning a space.
 -- Expects the formulas to be already in the right LambdaType.
@@ -36,3 +38,65 @@ boolDist :: Bool -> Bool -> Int
 boolDist x y
     | x == y    = 0
     | otherwise = 1
+
+-- |True, if more or equal Trues than Falses are in the list.
+majorityAdd :: [Bool] -> Bool
+majorityAdd xs =
+    let trueLen  = length (filter (== True) xs)
+    in  trueLen >= (length xs - trueLen)
+
+-- |Sum Lists of Bool with the help of majorityAdd.
+sumBoolLists :: [[Bool]] -> [Bool]
+sumBoolLists [] = []
+sumBoolLists xs =
+    let cols = [map (!! i) xs | i <- [0..(length (head xs) -1)]]
+    in  map majorityAdd cols
+
+-- |Generate n random Bools.
+randomBools :: Int -> IO [Bool]
+randomBools n = do
+    g <- newStdGen
+    return (take n (randoms g))
+
+-- |kMeans implementation for a boolean n dimensional space.
+kMeans :: (AsLambdaType f, PTrueIn f) => Model -> [f] -> Int -> IO [[[Bool]]]
+kMeans mdl@(Model (Frame w r) l) fmls k = do
+    let dims   = length fmls
+    centroids  <- mapM (\_ -> randomBools dims) [0..(k - 1)]
+    let wPoses = fmlSpacePoses mdl fmls (S.toList w)
+    let hOfx   = map (closestCentroidIdx centroids) wPoses
+    let wk     = zip wPoses hOfx
+    let clusters =
+          [map fst c | i <- [0..(k - 1)], let c = filter ((== i) . snd) wk]
+    return (kMeansLoop clusters centroids k)
+
+-- |Looping function for kMeans, ends when centroids stop moving.
+kMeansLoop :: [[[Bool]]] -> [[Bool]] -> Int -> [[[Bool]]]
+kMeansLoop clusters centroids k = do
+    let hOfx       = map (closestCentroidIdx centroids) (concat clusters)
+    let wk         = zip (concat clusters) hOfx
+    let clusters'  =
+          [map fst c | i <- [0..(k - 1)], let c = filter ((== i) . snd) wk]
+    let centroids' = map sumBoolLists clusters' -- new centroids
+    -- deal with possible empty clusters and the resulting null-like centroids
+    let centroids'' = keepEmptyClustCents centroids centroids'
+    if centroids'' /= centroids
+      then kMeansLoop clusters' centroids'' k
+      else clusters'
+
+-- |Determine the index number of the closes centroid.
+closestCentroidIdx :: [[Bool]] -> [Bool] -> Int
+closestCentroidIdx cs w =
+    let
+      dists = map (boolsDist w) cs
+      minD  = minimum dists
+    in
+      fromJust (L.elemIndex minD dists)
+
+-- |Take the corresponding element out of the first list if the element in the
+-- second list is null.
+keepEmptyClustCents :: [[a]] -> [[a]] -> [[a]]
+keepEmptyClustCents os ns
+    | length os /= length ns = error "keepEmptyClustCents: uneven lists given"
+    | otherwise              =
+        map (\(o, n) -> if null n then o else n) (zip os ns)
