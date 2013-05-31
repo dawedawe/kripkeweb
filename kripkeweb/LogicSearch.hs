@@ -305,6 +305,12 @@ instance AsLambdaType MLFml where
         phi' <- fmlAsLambdaType c lamType w phi
         psi' <- fmlAsLambdaType c lamType w psi
         return (MLImp phi' psi')
+    fmlAsLambdaType c lamType w (Box phi) = do
+        phi' <- fmlAsLambdaType c lamType w phi
+        return (Box phi')
+    fmlAsLambdaType c lamType w (Diamond phi) = do
+        phi' <- fmlAsLambdaType c lamType w phi
+        return (Diamond phi')
 
 instance Show Fml where
     show (Var x)       = show x
