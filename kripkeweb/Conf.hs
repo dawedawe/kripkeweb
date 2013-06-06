@@ -85,7 +85,7 @@ confFileName = progName ++ ".conf"
 usage :: String
 usage =
     "Usage: " ++ progName ++
-    " [-R url [-d n]] [-f plfrm] [-g frm] [-l] [-p n] [-r url] [-t url]"
+    " [-R url [-d n]] [-f plfrm] [-g frm] [-l] [-p n] [-t url]"
 
 options :: [OptDescr (Options -> Options)]
 options = [
