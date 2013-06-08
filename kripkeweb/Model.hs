@@ -7,6 +7,7 @@ module Model
 , termAsLamType
 ) where
 
+import Control.Monad (when)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Database.PostgreSQL.Simple
@@ -29,7 +30,7 @@ getAndStoreLambdaRel c prx url = do
     insertLambdaRelation c Raw rf
     insertLambdaRelation c Stem sf
     insertLambdaRelation c Soundex ef
-    insertStemLang c url sa
+    when (nTuples sf /= S.empty) $ insertStemLang c url sa
 
 -- |Apply getAndStoreLambdaRel to all sources in links.
 buildLambdaStore :: Connection -> Maybe Proxy -> IO ()
