@@ -2,6 +2,7 @@
 
 module WebSpider
 ( accessabilitySet
+, getDomainAsText
 , getLambdaRelation
 , spider
 , spiderHO
@@ -318,11 +319,11 @@ stopWords = gerStopWords ++ engStopWords
 -- |List of german StopWords.
 gerStopWords :: [String]
 gerStopWords =
-    ["auf", "der", "die", "das", "dass", "damit", "dem", "den", "des", "denn",
-     "diese", "diesem", "diesen", "dieser", "dieses", "durch", "ein", "eine",
-    "einem", "einen", "eines", "es", "für", "im", "in", "ist", "mit", "sie",
-    "sind", "um", "und", "uns", "vom", "von", "vor", "was", "wie", "wir", "wo",
-    "zu", "zum", "zur"]
+    ["als", "am", "an", "auf", "aus", "bei", "der", "die", "das", "dass",
+     "damit", "dem", "den", "des", "denn", "diese", "diesem", "diesen",
+     "dieser", "dieses", "durch", "ein", "eine", "einem", "einen", "eines",
+     "es", "für", "im", "in", "ist", "mit", "sich", "sie", "sind", "um", "und",
+     "uns", "vom", "von", "vor", "was", "wie", "wir", "wo", "zu", "zum", "zur"]
 
 -- |List of english StopWords.
 engStopWords :: [String]
