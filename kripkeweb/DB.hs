@@ -3,6 +3,7 @@
 module DB
 ( dbFrame
 , dbModel
+, deleteLambdaWorld
 , documentFrequency
 , formulasInLambda
 , initPageRankTable
@@ -24,8 +25,10 @@ module DB
 , targetsOf
 , termFrequency
 , transSubFrames
+, updateFmlCount
 , updatePageRank
 , worldCountInLambda
+, worldFmlsAndCounts
 , worldFormulas
 , worldsInLambda
 , worldsInLinks
@@ -162,6 +165,38 @@ insertLambdaRelation c lamType otnt = do
       error ("insertLambdaRelation: inserted only " ++ show rs ++
         " out of " ++ show ottlln)
 
+-- |Update the frmcount field in a lambda Entry
+updateFmlCount :: Connection -> LambdaType -> LambdaEntry -> IO ()
+updateFmlCount c lamType (LambdaEntry w f cnt) = do
+    let
+      rawq   = "UPDATE lambda         SET frmcount = ? \
+               \WHERE world = ? AND formula = ?"
+      stemq  = "UPDATE lambda_stems   SET frmcount = ? \
+               \WHERE world = ? AND formula = ?"
+      sndexq = "UPDATE lambda_soundex SET frmcount = ? \
+               \WHERE world = ? AND formula = ?"
+      q      = case lamType of
+                 Raw     -> rawq
+                 Stem    -> stemq
+                 Soundex -> sndexq
+    rs <- execute c q (cnt, w, f)
+    putStrLn ("updateFrmCount " ++ show lamType ++ " " ++ show rs)
+    when (rs /= 1) $ error ("updateFrmCount: result = " ++ show rs)
+
+-- |Delete all entries of the world in the specified lambda table.
+deleteLambdaWorld :: Connection -> LambdaType -> T.Text -> IO ()
+deleteLambdaWorld c lamType w = do
+    let
+      rawq   = "DELETE FROM lambda         WHERE world = ?"
+      stemq  = "DELETE FROM lambda_stems   WHERE world = ?"
+      sndexq = "DELETE FROM lambda_soundex WHERE world = ?"
+      q      = case lamType of
+                 Raw     -> rawq
+                 Stem    -> stemq
+                 Soundex -> sndexq
+    execute c q (Only w)
+    putStrLn ("deleteLambdaWorld " ++ show w)
+
 -- |Formulas of the given world.
 worldFormulas :: Connection -> LambdaType -> T.Text -> IO [T.Text]
 worldFormulas c lamType w =
@@ -175,6 +210,20 @@ worldFormulas c lamType w =
                  Soundex -> sndexq
     in
       liftM (map fromOnly) (query c q (Only w))
+
+-- |The (formula, count) tuples of a world in lambda.
+worldFmlsAndCounts :: Connection -> LambdaType -> T.Text -> IO [(T.Text, Int)]
+worldFmlsAndCounts c lamType w =
+    let
+      rawq   = "SELECT formula, frmcount FROM lambda         WHERE world = ?"
+      stemq  = "SELECT formula, frmcount FROM lambda_stems   WHERE world = ?"
+      sndexq = "SELECT formula, frmcount FROM lambda_soundex WHERE world = ?"
+      q      = case lamType of
+                 Raw     -> rawq
+                 Stem    -> stemq
+                 Soundex -> sndexq
+    in
+      query c q (Only w)
 
 -- |Count of the given formula in the given world.
 termFrequency :: Connection -> LambdaType -> T.Text -> T.Text -> IO Int
@@ -498,4 +547,27 @@ transRelsOf c w = do
       -- drop possible transitive violations in transitive rels of w
       then return (dropTransViolations (L.nub (relsOfw ++ totRels)))
       else return []
+ 
+--------------------------------------------------------------------------------
+-- functions for powerlaw analysis
+
+-- |Outdegree distribution as (degree, count) tuples.
+outdegreeDistribution :: Connection -> IO [(Int, Int)]
+outdegreeDistribution c =
+    let q = "SELECT outdegree, count(*) \
+            \FROM \
+              \(SELECT count(*) AS outdegree \
+              \FROM links GROUP BY source) AS tmp \
+            \GROUP BY outdegree ORDER BY outdegree"
+    in  query_ c q
+
+-- |Indegree distribution as (degree, count) tuples.
+indegreeDistribution :: Connection -> IO [(Int, Int)]
+indegreeDistribution c =
+    let q = "SELECT indegree, count(*) \
+            \FROM \
+              \(SELECT count(*) AS indegree \
+              \FROM links GROUP BY target) AS tmp \
+            \GROUP BY indegree ORDER BY indegree"
+    in  query_ c q
 
