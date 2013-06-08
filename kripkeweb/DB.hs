@@ -4,6 +4,7 @@ module DB
 ( dbFrame
 , dbModel
 , deleteLambdaWorld
+, deleteStemLangWorld
 , documentFrequency
 , formulasInLambda
 , initPageRankTable
@@ -194,7 +195,8 @@ deleteLambdaWorld c lamType w = do
                  Raw     -> rawq
                  Stem    -> stemq
                  Soundex -> sndexq
-    execute c q (Only w)
+    rs <- execute c q (Only w)
+    when (rs == 0) $ error ("no entries deleted for " ++ show w)
     putStrLn ("deleteLambdaWorld " ++ show w)
 
 -- |Formulas of the given world.
@@ -278,6 +280,12 @@ insertStemLang c w (Just alg) = do
                    \VALUES (?,?)" [w, s]
     return ()
     where s = (T.pack . show . MyStemAlgo) alg
+
+deleteStemLangWorld :: Connection -> T.Text -> IO ()
+deleteStemLangWorld c w = do
+    rs <- execute c "DELETE FROM world_stem_lang WHERE world = ?" (Only w)
+    when (rs /= 1) $ error ("deleteStemLangWorld " ++ show w)
+    putStrLn ("deleteStemLangWorld " ++ show w)
 
 -- |language entry of a world in world_stem_lang.
 stemLang :: Connection -> T.Text -> IO T.Text
