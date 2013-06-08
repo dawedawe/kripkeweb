@@ -2,7 +2,7 @@ module PostProcessing
 ( 
 ) where
 
-import Control.Monad (liftM)
+import Control.Monad (liftM, when)
 import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -19,8 +19,8 @@ foldLambda c lamType = do
     ws <- liftM (filter isSubsiteUrl) (worldsInLambda c lamType)
     mapM_ (foldLambdaSubWorld c lamType) ws
 
--- |Fold a single subworld in lambda into the respective main worlds data and
--- delete the subsite world from lambda.
+-- |Fold the data of a single subworld in lambda into the respective main worlds
+-- data and delete the subsite world from lambda.
 foldLambdaSubWorld :: Connection -> LambdaType -> T.Text -> IO ()
 foldLambdaSubWorld c lamType subW = do
     let mainW  = getDomainAsText subW
@@ -28,6 +28,7 @@ foldLambdaSubWorld c lamType subW = do
     subFmlCnt  <- worldFmlsAndCounts c lamType subW
     mapM_ (foldLambdaSubworldEntry c lamType mainW mainFmlCnt) subFmlCnt
     deleteLambdaWorld c lamType subW
+    when (lamType == Stem) $ (deleteStemLangWorld c subW)
 
 -- |Fold a single subworld entry in lambda into the main worlds data.
 foldLambdaSubworldEntry :: Connection -> LambdaType -> T.Text ->
