@@ -148,6 +148,7 @@ pathsToViaLambda' c lamType visited path = do
 insertLambdaRelation :: Connection -> LambdaType -> OneToNtuples -> IO () 
 insertLambdaRelation c lamType otnt = do
     let
+      w      = dEntity otnt
       ottlst = oToNtuples2LambdaEntry otnt
       ottlln = fromIntegral (Prelude.length ottlst)
       rawq   = "INSERT INTO lambda         (world, formula, frmcount) \
@@ -161,7 +162,8 @@ insertLambdaRelation c lamType otnt = do
                  Stem    -> stemq
                  Soundex -> sndexq
     rs <- executeMany c q ottlst
-    putStrLn ("insertLambdaRelation " ++ show lamType ++ " " ++ show rs)
+    putStrLn ("insertLambdaRelation " ++ show w ++ " " ++ show lamType ++
+      " " ++ show rs)
     when (rs /= ottlln) $
       error ("insertLambdaRelation: inserted only " ++ show rs ++
         " out of " ++ show ottlln)
