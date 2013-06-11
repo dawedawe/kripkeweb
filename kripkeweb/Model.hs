@@ -11,7 +11,7 @@ import Control.Monad (when)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Database.PostgreSQL.Simple
-import NLP.Snowball (stem)
+import NLP.Snowball (Algorithm, stem)
 import Text.PhoneticCode.Soundex (soundexNARA)
 
 import Conf
@@ -23,20 +23,24 @@ import WebSpider
 lambda :: Connection -> LambdaType -> T.Text -> IO [T.Text]
 lambda = worldFormulas
 
--- |Fetch unstemmed/stemmed formulas of a single url and store them.
-getAndStoreLambdaRel :: Connection -> Maybe Proxy -> T.Text -> IO ()
-getAndStoreLambdaRel c prx url = do
-    (LambdaRels rf sf ef, sa) <- getLambdaRelation prx url
+-- |Fetch raw/stemmed/sonudexed formulas via the given function of a single url
+-- and store them.
+getAndStoreLambdaRel :: Connection ->
+                        (T.Text -> IO (LambdaRels, Maybe Algorithm)) ->
+                        T.Text -> IO ()
+getAndStoreLambdaRel c func url = do
+    (LambdaRels rf sf ef, sa) <- func url
     insertLambdaRelation c Raw rf
     insertLambdaRelation c Stem sf
     insertLambdaRelation c Soundex ef
     when (nTuples sf /= S.empty) $ insertStemLang c url sa
 
 -- |Apply getAndStoreLambdaRel to all sources in links.
-buildLambdaStore :: Connection -> Maybe Proxy -> IO ()
-buildLambdaStore c prx = do
+buildLambdaStore :: Connection ->
+                    (T.Text -> IO (LambdaRels, Maybe Algorithm)) -> IO ()
+buildLambdaStore c func = do
     worlds <- worldsInLinks c
-    mapM_ (getAndStoreLambdaRel c prx) worlds
+    mapM_ (getAndStoreLambdaRel c func) worlds
     close c
 
 -- |Build and store the Accessability Relation starting at an url with a given
