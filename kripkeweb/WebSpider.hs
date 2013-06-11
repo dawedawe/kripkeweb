@@ -4,6 +4,7 @@ module WebSpider
 ( accessabilitySet
 , getDomainAsText
 , getLambdaRelation
+, getMetaLambdaRel
 , spider
 , spiderHO
 , spiderRelHO
@@ -13,7 +14,7 @@ module WebSpider
 import Control.Arrow ((&&&))
 import Data.Char (isDigit)
 import Data.Foldable (foldlM)
-import Data.List (isPrefixOf, isSuffixOf, group, sort)
+import Data.List (group, isPrefixOf, isSuffixOf, nub, sort)
 import Data.Maybe (isJust, fromJust)
 import qualified Data.Set as S
 import qualified Data.Text as T (Text, append, init, isSuffixOf, pack, unpack)
@@ -210,22 +211,35 @@ getTags prx url = getPage prx url >>= \p -> return ((canonicalizeTags . tags) p)
 -- url.
 getLambdaRelation :: Maybe Proxy -> T.Text -> IO (LambdaRels, Maybe Algorithm)
 getLambdaRelation prx url = do
-    ts <- getTags prx (T.unpack url)
-    let frms  = (filterFormulas . map lowerString .
-                  tokenize . innerText . filterScript) ts
+    tgs      <- getTags prx (T.unpack url)
+    let fmls = (filterFormulas . map lowerString .
+                  tokenize . innerText . filterScript) tgs
+    return (constructLambdaRels url tgs fmls)
+
+getMetaLambdaRel :: Maybe Proxy -> T.Text -> IO (LambdaRels, Maybe Algorithm)
+getMetaLambdaRel prx url = do
+    tgs       <- getTags prx (T.unpack url)
+    let fmls  = parseMeta tgs
+    return (constructLambdaRels url tgs fmls)
+   
+constructLambdaRels :: T.Text -> [Tag String] -> [String] ->
+                       (LambdaRels, Maybe Algorithm)
+constructLambdaRels url tgs fmls =
+    let
     -- raw
-    let ufrms = addCount (map T.pack frms)
-    let r1    = OneToNtuples url (S.fromList ufrms)
+      ufrms = addCount (map T.pack fmls)
+      r1    = OneToNtuples url (S.fromList ufrms)
     -- stemmed
-    let sa    = chooseStemAlgo (T.unpack url) ts
-    let sf    = constructStemFunc sa
-    let sfrms = addCount (map (sf . T.pack) frms)
-    let r2    = OneToNtuples url (S.fromList sfrms)
+      sa    = chooseStemAlgo (T.unpack url) tgs
+      sf    = constructStemFunc sa
+      sfmls = addCount (map (sf . T.pack) fmls)
+      r2    = OneToNtuples url (S.fromList sfmls)
     -- soundexed
-    let efrms = filter isSoundExHash (map soundexNARA frms)
-    let r3'   = addCount (map T.pack efrms)
-    let r3    = OneToNtuples url (S.fromList r3')
-    return (LambdaRels r1 r2 r3, sa)
+      efmls = filter isSoundExHash (map soundexNARA fmls)
+      r3'   = addCount (map T.pack efmls)
+      r3    = OneToNtuples url (S.fromList r3')
+    in
+      (LambdaRels r1 r2 r3, sa)
 
 -- |Add Count to the list of formulas.
 addCount :: [T.Text] -> [(T.Text, Int)]
@@ -258,6 +272,22 @@ parseLang t@(TagOpen "html" _ : _) =
     in  if null l then Nothing else Just l
 parseLang (_:xs)                   = parseLang xs
 parseLang []                       = Nothing
+
+parseMeta :: [Tag String] -> [String]
+parseMeta tgs =
+    let
+      meta = "meta" :: String
+      descMetaTags = filter (~== TagOpen meta [("name", "description")]) tgs
+      keywMetaTags = filter (~== TagOpen meta [("name", "keywords")]) tgs
+      desc         = if null descMetaTags
+                       then []
+                       else fromAttrib "content" (head descMetaTags)
+      keyw         = if null keywMetaTags
+                       then []
+                       else fromAttrib "content" (head keywMetaTags)
+      ws           = words (desc ++ keyw)
+    in
+      (nub . filterFormulas . map lowerString . concatMap tokenize) ws
 
 -- |HTML lang attribute to Snowball stemming Algorithm.
 langAttr2StemAlgo :: String -> Maybe Algorithm
