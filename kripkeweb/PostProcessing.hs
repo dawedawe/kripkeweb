@@ -28,7 +28,7 @@ foldLambdaSubWorld c lamType subW = do
     subFmlCnt  <- worldFmlsAndCounts c lamType subW
     mapM_ (foldLambdaSubworldEntry c lamType mainW mainFmlCnt) subFmlCnt
     deleteLambdaWorld c lamType subW
-    when (lamType == Stem) $ (deleteStemLangWorld c subW)
+    when (lamType == Stem) $ deleteStemLangWorld c subW
 
 -- |Fold a single subworld entry in lambda into the main worlds data.
 foldLambdaSubworldEntry :: Connection -> LambdaType -> T.Text ->
