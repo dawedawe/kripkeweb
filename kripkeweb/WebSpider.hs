@@ -15,6 +15,7 @@ import Control.Arrow ((&&&))
 import Data.Char (isDigit)
 import Data.Foldable (foldlM)
 import Data.List (group, isPrefixOf, isSuffixOf, nub, sort)
+import Data.List.Utils (replace)
 import Data.Maybe (isJust, fromJust)
 import qualified Data.Set as S
 import qualified Data.Text as T (Text, append, init, isSuffixOf, pack, unpack)
@@ -285,7 +286,7 @@ parseMeta tgs =
       keyw         = if null keywMetaTags
                        then []
                        else fromAttrib "content" (head keywMetaTags)
-      ws           = words (desc ++ keyw)
+      ws           = words (replace "," " " (desc ++ keyw))
     in
       (nub . filterFormulas . map lowerString . concatMap tokenize) ws
 
