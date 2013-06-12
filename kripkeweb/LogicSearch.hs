@@ -16,6 +16,7 @@ module LogicSearch
 , isTrueInWorld
 , isTrueInWorlds
 , isUniversallyTrue
+, lambdaOred
 , satWorlds
 , satFWorlds
 , parseFml
@@ -23,6 +24,7 @@ module LogicSearch
 
 import Control.Monad (filterM, liftM, liftM2)
 import Data.List ((\\), elemIndices, intersect, union)
+import Data.Maybe (catMaybes)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Database.PostgreSQL.Simple
@@ -420,4 +422,27 @@ takeTillParenBalanced (s:ss)  o c =
     if o == c
       then ""
       else s : takeTillParenBalanced ss o c
+
+-- |Lambda sets of all worlds as list of PL disjunctions.
+lambdaOred :: Connection -> LambdaType -> IO [Fml]
+lambdaOred c lamType = do
+    ws   <- worldsInLambda c lamType
+    fmls <- mapM (worldsLambdaOred c lamType) ws
+    return (catMaybes fmls)
+
+-- |Lambda formulas of a single world as one disjunction.
+worldsLambdaOred :: Connection -> LambdaType -> T.Text -> IO (Maybe Fml)
+worldsLambdaOred c lamType w = do
+    fmls <- worldFormulas c lamType w
+    return (formulasToOr fmls)
+    
+-- |Convert a T.Text list into a PL disjunction.
+formulasToOr :: [T.Text] -> Maybe Fml
+formulasToOr []     = Nothing
+formulasToOr (f:fs) =
+    let
+      accu = Var f
+      fmls = map Var fs
+    in
+      Just (foldl Or accu fmls)
 
