@@ -78,49 +78,59 @@ randomBools n = do
     g <- newStdGen
     return (take n (randoms g))
 
+-- |Minimum distance between two boolean space positions.
+minCentsDist :: [Bool] -> [Bool] -> Bool
+minCentsDist xs ys = boolsDist xs ys >= sqrt (fromIntegral (length xs `div` 2))
+
+-- |Minimum randomness of a boolean space position.
+minCentRandomness :: [Bool] -> Bool
+minCentRandomness centroid =
+    let
+      ts = length (filter (== True) centroid)
+      fs = length (filter (== False) centroid)
+      p  = fromIntegral (min ts fs) / fromIntegral (max ts fs)
+    in
+      p >= 0.3
+
+-- |True, if given list of boolean space positions reach the min quality.
+minCentQuality :: [[Bool]] -> Bool
+minCentQuality cents =
+    let
+      rs = map minCentRandomness cents
+      dq = [and q | x <- cents, let q = map (minCentsDist x) (L.delete x cents)]
+    in
+      (and rs) && (and dq)
+
+-- |Generate k random centroid positions in a d dimensional boolean space.
+-- Stop reaching min quality after i tries.
+randomCentroids :: Int -> Int -> Int -> IO [[Bool]]
+randomCentroids d k i
+    | i >= 0    = do
+        centroids <- mapM (\_ -> randomBools d) [0..(k - 1)]
+        if minCentQuality centroids || i == 0
+          then return centroids
+          else randomCentroids d k (pred i)
+    | otherwise = error "randomCentroids: argument i < 0"
+
 -- |kMeans implementation for a boolean n dimensional space.
 kMeans :: (AsLambdaType f, PTrueIn f) => Model -> [f] -> Int ->
-          IO [([Bool], [[Bool]])]
-kMeans mdl@(Model (Frame w r) l) fmls k = do
-    let dims   = length fmls
-    centroids  <- mapM (\_ -> randomBools dims) [0..(k - 1)]
-    let wPoses = fmlSpacePoses mdl fmls (S.toList w)
-    let hOfx   = map (closestCentroidIdx centroids) wPoses
-    let wk     = zip wPoses hOfx
-    let clusters =
-          [map fst c | i <- [0..(k - 1)], let c = filter ((== i) . snd) wk]
-    return (kMeansLoop clusters centroids k)
-
--- |Looping function for kMeans, ends when centroids stop moving.
-kMeansLoop :: [[[Bool]]] -> [[Bool]] -> Int -> [([Bool], [[Bool]])]
-kMeansLoop clusters centroids k = do
-    let hOfx       = map (closestCentroidIdx centroids) (concat clusters)
-    let wk         = zip (concat clusters) hOfx
-    let clusters'  =
-          [map fst c | i <- [0..(k - 1)], let c = filter ((== i) . snd) wk]
-    let centroids' = map sumBoolLists clusters' -- new centroids
-    -- deal with possible empty clusters and the resulting null-like centroids
-    let centroids'' = keepEmptyClustCents centroids centroids'
-    if centroids'' /= centroids
-      then kMeansLoop clusters' centroids'' k
-      else zip centroids'' clusters'
-
--- |kMeans implementation for a boolean n dimensional space.
-kMeans' :: (AsLambdaType f, PTrueIn f) => Model -> [f] -> Int ->
           IO [([Bool], [SpacePnt])]
-kMeans' mdl@(Model (Frame w r) l) fmls k = do
-    let dims   = length fmls
-    centroids  <- mapM (\_ -> randomBools dims) [0..(k - 1)]
+kMeans mdl@(Model (Frame w r) l) fmls k = do
+    let dim    = length fmls
+    -- centroids  <- mapM (\_ -> randomBools dims) [0..(k - 1)]
+    centroids  <- randomCentroids dim k 20
     let wPoses = fmlSpacePoses' mdl fmls (S.toList w)
     let hOfx   = map (closestCentroidIdx' centroids) wPoses
     let wk     = zip wPoses hOfx
     let clusters =
           [map fst c | i <- [0..(k - 1)], let c = filter ((== i) . snd) wk]
-    return (kMeansLoop' clusters centroids k)
+    return (kMeansLoop clusters centroids k 5)
 
--- |Looping function for kMeans, ends when centroids stop moving.
-kMeansLoop' :: [[SpacePnt]] -> [[Bool]] -> Int -> [([Bool], [SpacePnt])]
-kMeansLoop' clusters centroids k = do
+-- |Looping function for kMeans, ends when centroids stop moving or after i
+-- loops.
+kMeansLoop :: [[SpacePnt]] -> [[Bool]] -> Int -> Int -> [([Bool], [SpacePnt])]
+kMeansLoop clusters centroids k 0 = zip centroids clusters
+kMeansLoop clusters centroids k i = do
     let hOfx       = map (closestCentroidIdx' centroids) (concat clusters)
     let wk         = zip (concat clusters) hOfx
     let clusters'  =
@@ -130,7 +140,7 @@ kMeansLoop' clusters centroids k = do
     -- deal with possible empty clusters and the resulting null-like centroids
     let centroids'' = keepEmptyClustCents centroids centroids'
     if centroids'' /= centroids
-      then kMeansLoop' clusters' centroids'' k
+      then kMeansLoop clusters' centroids'' k (pred i)
       else zip centroids'' clusters'
 
 -- |Determine the index number of the closes centroid.
