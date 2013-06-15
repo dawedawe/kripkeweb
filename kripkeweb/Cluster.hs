@@ -26,25 +26,14 @@ instance Show SpacePnt where
 
 -- |fmlSpacePos vectors of all given worlds.
 fmlSpacePoses :: (AsLambdaType f, PTrueIn f) => Model -> [f] -> [T.Text] ->
-                 [[Bool]]
+                 [SpacePnt]
 fmlSpacePoses mdl@(Model (Frame w r) _) fmls ws =
     map (fmlSpacePos mdl fmls) (S.toList w)
 
--- |fmlSpacePos vectors of all given worlds.
-fmlSpacePoses' :: (AsLambdaType f, PTrueIn f) => Model -> [f] -> [T.Text] ->
-                 [SpacePnt]
-fmlSpacePoses' mdl@(Model (Frame w r) _) fmls ws =
-    map (fmlSpacePos' mdl fmls) (S.toList w)
-
 -- |Position of a world with regard to a list of formulas spanning a space.
 -- Expects the formulas to be already in the right LambdaType.
-fmlSpacePos :: (PTrueIn f) => Model -> [f] -> T.Text -> [Bool]
-fmlSpacePos mdl fmls w = map (isPTrueInWorld mdl w) fmls
-
--- |Position of a world with regard to a list of formulas spanning a space.
--- Expects the formulas to be already in the right LambdaType.
-fmlSpacePos' :: (PTrueIn f) => Model -> [f] -> T.Text -> SpacePnt
-fmlSpacePos' mdl fmls w = SpacePnt w (map (isPTrueInWorld mdl w) fmls)
+fmlSpacePos :: (PTrueIn f) => Model -> [f] -> T.Text -> SpacePnt
+fmlSpacePos mdl fmls w = SpacePnt w (map (isPTrueInWorld mdl w) fmls)
 
 
 -- |Distance of two Bool Lists.
@@ -99,7 +88,7 @@ minCentQuality cents =
       rs = map minCentRandomness cents
       dq = [and q | x <- cents, let q = map (minCentsDist x) (L.delete x cents)]
     in
-      (and rs) && (and dq)
+      and rs && and dq
 
 -- |Generate k random centroid positions in a d dimensional boolean space.
 -- Stop reaching min quality after i tries.
@@ -119,7 +108,7 @@ kMeans mdl@(Model (Frame w r) l) fmls k = do
     let dim    = length fmls
     -- centroids  <- mapM (\_ -> randomBools dims) [0..(k - 1)]
     centroids  <- randomCentroids dim k 20
-    let wPoses = fmlSpacePoses' mdl fmls (S.toList w)
+    let wPoses = fmlSpacePoses mdl fmls (S.toList w)
     let hOfx   = map (closestCentroidIdx' centroids) wPoses
     let wk     = zip wPoses hOfx
     let clusters =
