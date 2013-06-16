@@ -189,4 +189,5 @@ clusterDisim c lamType c1 c2
         let c2ws = map name c2
         c1ls <- liftM concat (mapM (worldFormulas c lamType) c1ws)
         c2ls <- liftM concat (mapM (worldFormulas c lamType) c2ws)
+        return (Just (disimilarity (S.fromList c1ls) (S.fromList c2ls)))
 
