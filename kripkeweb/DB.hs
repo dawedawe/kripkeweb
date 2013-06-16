@@ -12,6 +12,7 @@ module DB
 , insertAccessRel
 , insertStemLang
 , lambdaAccum
+, linkCountAmongWorlds
 , myConn
 , negateLambaWorlds
 , outLinkCount
@@ -581,3 +582,9 @@ indegreeDistribution c =
             \GROUP BY indegree ORDER BY indegree"
     in  query_ c q
 
+-- |Count of links between worlds in the given list.
+linkCountAmongWorlds :: Connection -> [T.Text] -> IO Int
+linkCountAmongWorlds c ws =
+    let q = "SELECT count(*) FROM links \
+            \WHERE source IN ? AND target IN ?"
+    in  liftM (fromOnly . head) $ query c q (In ws, In ws)
