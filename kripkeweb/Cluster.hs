@@ -4,6 +4,7 @@ module Cluster
 , fmlSpacePoses
 ) where
 
+import Control.Monad (liftM)
 import qualified Data.List as L
 import Data.Maybe (fromJust)
 import qualified Data.Set as S
@@ -109,7 +110,7 @@ kMeans mdl@(Model (Frame w r) l) fmls k = do
     -- centroids  <- mapM (\_ -> randomBools dims) [0..(k - 1)]
     centroids  <- randomCentroids dim k 20
     let wPoses = fmlSpacePoses mdl fmls (S.toList w)
-    let hOfx   = map (closestCentroidIdx' centroids) wPoses
+    let hOfx   = map (closestCentroidIdx centroids) wPoses
     let wk     = zip wPoses hOfx
     let clusters =
           [map fst c | i <- [0..(k - 1)], let c = filter ((== i) . snd) wk]
@@ -120,7 +121,7 @@ kMeans mdl@(Model (Frame w r) l) fmls k = do
 kMeansLoop :: [[SpacePnt]] -> [[Bool]] -> Int -> Int -> [([Bool], [SpacePnt])]
 kMeansLoop clusters centroids k 0 = zip centroids clusters
 kMeansLoop clusters centroids k i = do
-    let hOfx       = map (closestCentroidIdx' centroids) (concat clusters)
+    let hOfx       = map (closestCentroidIdx centroids) (concat clusters)
     let wk         = zip (concat clusters) hOfx
     let clusters'  =
           [map fst c | i <- [0..(k - 1)], let c = filter ((== i) . snd) wk]
@@ -133,17 +134,8 @@ kMeansLoop clusters centroids k i = do
       else zip centroids'' clusters'
 
 -- |Determine the index number of the closes centroid.
-closestCentroidIdx :: [[Bool]] -> [Bool] -> Int
-closestCentroidIdx cs w =
-    let
-      dists = map (boolsDist w) cs
-      minD  = minimum dists
-    in
-      fromJust (L.elemIndex minD dists)
-
--- |Determine the index number of the closes centroid.
-closestCentroidIdx' :: [[Bool]] -> SpacePnt -> Int
-closestCentroidIdx' cs (SpacePnt _ pos) =
+closestCentroidIdx :: [[Bool]] -> SpacePnt -> Int
+closestCentroidIdx cs (SpacePnt _ pos) =
     let
       dists = map (boolsDist pos) cs
       minD  = minimum dists
@@ -157,3 +149,44 @@ keepEmptyClustCents os ns
     | length os /= length ns = error "keepEmptyClustCents: uneven lists"
     | otherwise              =
         map (\(o, n) -> if null n then o else n) (zip os ns)
+
+-- |Simple similarity measure: |x intersect y| / |x union y|
+similarity :: (Eq a, Ord a) => S.Set a -> S.Set a -> Double
+similarity x y
+    | x == S.empty && y == S.empty = error "similarity: empty sets"
+    | otherwise                    =
+        let
+          interSize = S.size (x `S.intersection` y)
+          unionSize = S.size (x `S.union` y)
+        in
+          fromIntegral interSize / fromIntegral unionSize
+
+-- |Simple disimilarity measure: |x union y| / |x intersect y|
+disimilarity :: (Eq a, Ord a) => S.Set a -> S.Set a -> Double
+disimilarity x y
+    | x == S.empty && y == S.empty = error "disimilarity: empty sets"
+    | otherwise                    = 1 / similarity x y
+
+-- |Average similarity of pairs in a cluster.
+clusterSim :: Connection -> LambdaType -> [SpacePnt] -> IO (Maybe Double)
+clusterSim c lamType []      = return Nothing
+clusterSim c lamType (x:[])  = return Nothing
+clusterSim c lamType cluster = do
+    let ws    = map name cluster
+    ls        <- mapM (worldFormulas c lamType) ws
+    let ls'   = map S.fromList ls
+    let wsims = [map (similarity l) (L.delete l ls') | l <- ls']
+    let sims  = concat wsims
+    return (Just (sum sims / fromIntegral (length sims)))
+
+-- |Disimilarity between the formula sets of two clusters.
+clusterDisim :: Connection -> LambdaType -> [SpacePnt] -> [SpacePnt] ->
+                IO (Maybe Double)
+clusterDisim c lamType c1 c2
+    | null c1 || null c2 = return Nothing
+    | otherwise          = do
+        let c1ws = map name c1
+        let c2ws = map name c2
+        c1ls <- liftM concat (mapM (worldFormulas c lamType) c1ws)
+        c2ls <- liftM concat (mapM (worldFormulas c lamType) c2ws)
+
