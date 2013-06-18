@@ -6,7 +6,7 @@ module Cluster
 
 import Control.Monad (liftM)
 import qualified Data.List as L
-import Data.Maybe (fromJust)
+import Data.Maybe (catMaybes, fromJust)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Database.PostgreSQL.Simple
@@ -20,7 +20,7 @@ import Tfidf
 
 data SpacePnt = SpacePnt { name     :: T.Text
                          , position :: [Bool]
-                         }
+                         } deriving (Eq)
 
 instance Show SpacePnt where
     show (SpacePnt n p) = show (n, show p)
@@ -128,7 +128,7 @@ kMeansLoop clusters centroids k i = do
     -- new centroids
     let centroids' = map (sumBoolLists . map position) clusters'
     -- deal with possible empty clusters and the resulting null-like centroids
-    let centroids'' = keepEmptyClustCents centroids centroids'
+    let centroids'' = keepCentroidsOfEmptyClusters centroids centroids'
     if centroids'' /= centroids
       then kMeansLoop clusters' centroids'' k (pred i)
       else zip centroids'' clusters'
@@ -144,8 +144,8 @@ closestCentroidIdx cs (SpacePnt _ pos) =
 
 -- |Take the corresponding element out of the first list if the element in the
 -- second list is null.
-keepEmptyClustCents :: [[a]] -> [[a]] -> [[a]]
-keepEmptyClustCents os ns
+keepCentroidsOfEmptyClusters :: [[a]] -> [[a]] -> [[a]]
+keepCentroidsOfEmptyClusters os ns
     | length os /= length ns = error "keepEmptyClustCents: uneven lists"
     | otherwise              =
         map (\(o, n) -> if null n then o else n) (zip os ns)
@@ -161,11 +161,11 @@ similarity x y
         in
           fromIntegral interSize / fromIntegral unionSize
 
--- |Simple disimilarity measure: |x union y| / |x intersect y|
+-- |Simple disimilarity measure: 1 - similarity x y
 disimilarity :: (Eq a, Ord a) => S.Set a -> S.Set a -> Double
 disimilarity x y
     | x == S.empty && y == S.empty = error "disimilarity: empty sets"
-    | otherwise                    = 1 / similarity x y
+    | otherwise                    = 1 - similarity x y
 
 -- |Average similarity of pairs in a cluster.
 clusterSim :: Connection -> LambdaType -> [SpacePnt] -> IO (Maybe Double)
@@ -190,4 +190,32 @@ clusterDisim c lamType c1 c2
         c1ls <- liftM concat (mapM (worldFormulas c lamType) c1ws)
         c2ls <- liftM concat (mapM (worldFormulas c lamType) c2ws)
         return (Just (disimilarity (S.fromList c1ls) (S.fromList c2ls)))
+
+clusterDisims :: Connection -> LambdaType -> [[SpacePnt]] -> [SpacePnt] ->
+                 IO [Maybe Double]
+clusterDisims c lamType clusters cl =
+    mapM (clusterDisim c lamType cl) (L.delete cl clusters)
+
+avgClusterDisim :: Connection -> LambdaType -> [[SpacePnt]] -> IO Double
+avgClusterDisim c lamType clusters
+    | length clusters < 2 = error "avgClusterDisim: < 2 clusters given"
+    | otherwise           = do
+      ds <- mapM (clusterDisims c lamType clusters) clusters
+      let ds' = catMaybes (concat ds)
+      return (sum ds' / fromIntegral (length ds'))
+
+-- |Edge count in a total directed graph.
+edgesInDigraphClique :: Int -> Int
+edgesInDigraphClique n = n * (n - 1)
+
+-- |Links in a cluster / edge count of a digraph clique.
+clusterToDigraphCliqueMeasure :: Connection -> [SpacePnt] -> IO Double
+clusterToDigraphCliqueMeasure c []      =
+    error "clusterToTotalDGraphMeasure: empty cluster given"
+clusterToDigraphCliqueMeasure c cluster = do
+    let ws = map name cluster
+    let n  = length ws
+    let t  = edgesInDigraphClique n
+    lc     <- linkCountAmongWorlds c ws
+    return (fromIntegral lc / fromIntegral t)
 
