@@ -191,11 +191,22 @@ clusterDisim c lamType c1 c2
         c2ls <- liftM concat (mapM (worldFormulas c lamType) c2ws)
         return (Just (disimilarity (S.fromList c1ls) (S.fromList c2ls)))
 
+-- |Disimilarity scores of one cluster to a list of other clusters.
 clusterDisims :: Connection -> LambdaType -> [[SpacePnt]] -> [SpacePnt] ->
                  IO [Maybe Double]
 clusterDisims c lamType clusters cl =
     mapM (clusterDisim c lamType cl) (L.delete cl clusters)
 
+-- |Average similarity of a list of clusters.
+avgClusterSim :: Connection -> LambdaType -> [[SpacePnt]] -> IO Double
+avgClusterSim c lamType clusters
+    | length clusters < 1 = error "avgClusterSim: < 1 clusters given"
+    | otherwise           = do
+      ss <- mapM (clusterSim c lamType) clusters
+      let ss' = catMaybes ss
+      return (sum ss' / fromIntegral (length ss'))
+
+-- |Average disimilarity among a list of clusters.
 avgClusterDisim :: Connection -> LambdaType -> [[SpacePnt]] -> IO Double
 avgClusterDisim c lamType clusters
     | length clusters < 2 = error "avgClusterDisim: < 2 clusters given"
