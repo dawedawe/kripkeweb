@@ -27,7 +27,7 @@ main = do
     createDotDir
     conf <- buildConf parsedOptions
 
-    when (optFlags (opts conf) == S.empty) $ do
+    when (S.null (optFlags (opts conf))) $ do
       putStrLn usage
       exitFailure
 

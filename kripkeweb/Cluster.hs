@@ -153,8 +153,8 @@ keepCentroidsOfEmptyClusters os ns
 -- |Simple similarity measure: |x intersect y| / |x union y|
 similarity :: (Eq a, Ord a) => S.Set a -> S.Set a -> Double
 similarity x y
-    | x == S.empty && y == S.empty = error "similarity: empty sets"
-    | otherwise                    =
+    | S.null x && S.null y = error "similarity: empty sets"
+    | otherwise            =
         let
           interSize = S.size (x `S.intersection` y)
           unionSize = S.size (x `S.union` y)
@@ -164,8 +164,8 @@ similarity x y
 -- |Simple disimilarity measure: 1 - similarity x y
 disimilarity :: (Eq a, Ord a) => S.Set a -> S.Set a -> Double
 disimilarity x y
-    | x == S.empty && y == S.empty = error "disimilarity: empty sets"
-    | otherwise                    = 1 - similarity x y
+    | S.null x && S.null y = error "disimilarity: empty sets"
+    | otherwise            = 1 - similarity x y
 
 -- |Average similarity of pairs in a cluster.
 clusterSim :: Connection -> LambdaType -> [SpacePnt] -> IO (Maybe Double)
