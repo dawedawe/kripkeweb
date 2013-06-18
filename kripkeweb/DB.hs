@@ -588,3 +588,11 @@ linkCountAmongWorlds c ws =
     let q = "SELECT count(*) FROM links \
             \WHERE source IN ? AND target IN ?"
     in  liftM (fromOnly . head) $ query c q (In ws, In ws)
+
+linkCountBetweenWorldSets :: Connection -> [T.Text] -> [T.Text] -> IO Int
+linkCountBetweenWorldSets c ws1 ws2 =
+    let q = "SELECT count(*) FROM links \
+            \WHERE source IN ? AND target IN ? \
+            \OR source IN ? AND target In ?"
+    in  liftM (fromOnly . head) $ query c q (In ws1, In ws2, In ws2, In ws1)
+
