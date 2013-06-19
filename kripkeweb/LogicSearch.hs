@@ -16,7 +16,10 @@ module LogicSearch
 , isTrueInWorld
 , isTrueInWorlds
 , isUniversallyTrue
+, lambdaAnded
+, lambdaAndedNegated
 , lambdaOred
+, lambdaOredNegated
 , satWorlds
 , satFWorlds
 , parseFml
@@ -423,26 +426,49 @@ takeTillParenBalanced (s:ss)  o c =
       then ""
       else s : takeTillParenBalanced ss o c
 
+--------------------------------------------------------------------------------
+-- formula schemes
+
+-- |Lambda sets of all worlds as list of PL conjunctions.
+lambdaAnded :: Connection -> LambdaType -> IO [Fml]
+lambdaAnded c lamType = do
+    ws   <- worldsInLambda c lamType
+    fmls <- mapM (worldsLambdaCombined c lamType And) ws
+    return (catMaybes fmls)
+
 -- |Lambda sets of all worlds as list of PL disjunctions.
 lambdaOred :: Connection -> LambdaType -> IO [Fml]
 lambdaOred c lamType = do
     ws   <- worldsInLambda c lamType
-    fmls <- mapM (worldsLambdaOred c lamType) ws
+    fmls <- mapM (worldsLambdaCombined c lamType Or) ws
     return (catMaybes fmls)
 
+-- |Lambda sets of all worlds as list of negated PL conjunctions.
+lambdaAndedNegated :: Connection -> LambdaType -> IO [Fml]
+lambdaAndedNegated c lamType = do
+    andedFmls    <- lambdaAnded c lamType
+    return (map Not andedFmls)
+
+-- |Lambda sets of all worlds as lists of negated PL disjunctions.
+lambdaOredNegated :: Connection -> LambdaType -> IO [Fml]
+lambdaOredNegated c lamType = do
+    oredFmls    <- lambdaOred c lamType
+    return (map Not oredFmls)
+
 -- |Lambda formulas of a single world as one disjunction.
-worldsLambdaOred :: Connection -> LambdaType -> T.Text -> IO (Maybe Fml)
-worldsLambdaOred c lamType w = do
+worldsLambdaCombined :: Connection -> LambdaType -> (Fml -> Fml -> Fml) ->
+                        T.Text -> IO (Maybe Fml)
+worldsLambdaCombined c lamType j w = do
     fmls <- worldFormulas c lamType w
-    return (formulasToOr fmls)
+    return (formulasToJunction j fmls)
     
--- |Convert a T.Text list into a PL disjunction.
-formulasToOr :: [T.Text] -> Maybe Fml
-formulasToOr []     = Nothing
-formulasToOr (f:fs) =
+-- |Convert a T.Text list into a PL (dis/kon)junction.
+formulasToJunction :: (Fml -> Fml -> Fml) -> [T.Text] -> Maybe Fml
+formulasToJunction _ []     = Nothing
+formulasToJunction j (f:fs) =
     let
       accu = Var f
       fmls = map Var fs
     in
-      Just (foldl Or accu fmls)
+      Just (foldl j accu fmls)
 
