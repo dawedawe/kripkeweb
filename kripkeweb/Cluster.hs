@@ -209,7 +209,8 @@ avgClusterSim c lamType clusters
 -- |Average disimilarity among a list of clusters.
 avgClusterDisim :: Connection -> LambdaType -> [[SpacePnt]] -> IO Double
 avgClusterDisim c lamType clusters
-    | length clusters < 2 = error "avgClusterDisim: < 2 clusters given"
+    | length (filter (not . null) clusters) < 2 =
+        error "avgClusterDisim: < 2 unempty clusters given"
     | otherwise           = do
       ds <- mapM (clusterDisims c lamType clusters) clusters
       let ds' = catMaybes (concat ds)
