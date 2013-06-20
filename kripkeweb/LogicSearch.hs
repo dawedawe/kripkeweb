@@ -37,14 +37,14 @@ import KripkeTypes
 import Model
 import Util
 
--- |Check if x is true in ...
+-- |Check if x is true in ... Look up needed information in the database.
 class TrueIn x where
     isTrueInWorld     :: Connection -> LambdaType -> x -> T.Text -> IO Bool
     isTrueInWorlds    :: Connection -> LambdaType -> x -> [T.Text] -> IO Bool
     isUniversallyTrue :: Connection -> LambdaType -> x -> IO Bool
 
 -- |Like TrueIn but take the frame as an argument instead of out of the
--- database.
+-- database. Further information is looked up in the database.
 class FTrueIn x where
     isFTrueInWorld     :: Connection -> LambdaType -> Frame -> x -> T.Text ->
                           IO Bool
@@ -52,6 +52,8 @@ class FTrueIn x where
                           S.Set T.Text -> IO Bool
     isFUniversallyTrue :: Connection -> LambdaType -> Frame -> x -> IO Bool
 
+-- |Uses precomputed model to evaluate x. Expects the given model to have the
+-- right lambda type.
 class PTrueIn x where
     isPTrueInWorld :: Model -> T.Text -> x -> Bool
 
@@ -189,6 +191,28 @@ instance PTrueIn Fml where
 
   isPTrueInWorld mdl w (Imp phi psi) =
     isPTrueInWorld mdl w (Not phi) || isPTrueInWorld mdl w psi
+
+instance PTrueIn MLFml where
+    isPTrueInWorld (Model _ lam) w (MLVar phi) = phi `elem` lam w
+
+    isPTrueInWorld mdl w (MLNot phi) = not (isPTrueInWorld mdl w phi)
+
+    isPTrueInWorld mdl w (MLAnd phi psi) =
+      (isPTrueInWorld mdl w phi) && (isPTrueInWorld mdl w psi)
+
+    isPTrueInWorld mdl w (MLOr phi psi) =
+      (isPTrueInWorld mdl w phi) || (isPTrueInWorld mdl w psi)
+
+    isPTrueInWorld mdl w (MLImp phi psi) =
+      isPTrueInWorld mdl w (MLOr (MLNot phi) psi)
+
+    isPTrueInWorld mdl@(Model (Frame _ ar) _) w (Box phi) =
+      let tgs = targetsOf' (S.toList ar) w
+      in  and [isPTrueInWorld mdl t phi | t <- tgs]
+
+    isPTrueInWorld mdl@(Model (Frame _ ar) _) w (Diamond phi) =
+      let tgs = targetsOf' (S.toList ar) w
+      in  or [isPTrueInWorld mdl t phi | t <- tgs]
 
 instance TrueIn MLFml where
   isTrueInWorld c lamType (MLVar phi) w = do
