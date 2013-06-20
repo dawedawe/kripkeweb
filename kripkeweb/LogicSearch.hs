@@ -17,8 +17,10 @@ module LogicSearch
 , isTrueInWorlds
 , isUniversallyTrue
 , lambdaAnded
+, lambdaAndedDiamonded
 , lambdaAndedNegated
 , lambdaOred
+, lambdaOredDiamonded
 , lambdaOredNegated
 , satWorlds
 , satFWorlds
@@ -198,10 +200,10 @@ instance PTrueIn MLFml where
     isPTrueInWorld mdl w (MLNot phi) = not (isPTrueInWorld mdl w phi)
 
     isPTrueInWorld mdl w (MLAnd phi psi) =
-      (isPTrueInWorld mdl w phi) && (isPTrueInWorld mdl w psi)
+      isPTrueInWorld mdl w phi && isPTrueInWorld mdl w psi
 
     isPTrueInWorld mdl w (MLOr phi psi) =
-      (isPTrueInWorld mdl w phi) || (isPTrueInWorld mdl w psi)
+      isPTrueInWorld mdl w phi || isPTrueInWorld mdl w psi
 
     isPTrueInWorld mdl w (MLImp phi psi) =
       isPTrueInWorld mdl w (MLOr (MLNot phi) psi)
@@ -453,46 +455,58 @@ takeTillParenBalanced (s:ss)  o c =
 --------------------------------------------------------------------------------
 -- formula schemes
 
--- |Lambda sets of all worlds as list of PL conjunctions.
-lambdaAnded :: Connection -> LambdaType -> IO [Fml]
+-- |Lambda sets of all worlds as list of conjunctions.
+lambdaAnded :: Connection -> LambdaType -> IO [MLFml]
 lambdaAnded c lamType = do
     ws   <- worldsInLambda c lamType
-    fmls <- mapM (worldsLambdaCombined c lamType And) ws
+    fmls <- mapM (worldsLambdaCombined c lamType MLAnd) ws
     return (catMaybes fmls)
 
--- |Lambda sets of all worlds as list of PL disjunctions.
-lambdaOred :: Connection -> LambdaType -> IO [Fml]
+-- |Lambda sets of all worlds as list of disjunctions.
+lambdaOred :: Connection -> LambdaType -> IO [MLFml]
 lambdaOred c lamType = do
     ws   <- worldsInLambda c lamType
-    fmls <- mapM (worldsLambdaCombined c lamType Or) ws
+    fmls <- mapM (worldsLambdaCombined c lamType MLOr) ws
     return (catMaybes fmls)
 
--- |Lambda sets of all worlds as list of negated PL conjunctions.
-lambdaAndedNegated :: Connection -> LambdaType -> IO [Fml]
+-- |Lambda sets of all worlds as list of negated conjunctions.
+lambdaAndedNegated :: Connection -> LambdaType -> IO [MLFml]
 lambdaAndedNegated c lamType = do
-    andedFmls    <- lambdaAnded c lamType
-    return (map Not andedFmls)
+    andedFmls <- lambdaAnded c lamType
+    return (map MLNot andedFmls)
 
--- |Lambda sets of all worlds as lists of negated PL disjunctions.
-lambdaOredNegated :: Connection -> LambdaType -> IO [Fml]
+-- |Lambda sets of all worlds as lists of negated disjunctions.
+lambdaOredNegated :: Connection -> LambdaType -> IO [MLFml]
 lambdaOredNegated c lamType = do
-    oredFmls    <- lambdaOred c lamType
-    return (map Not oredFmls)
+    oredFmls <- lambdaOred c lamType
+    return (map MLNot oredFmls)
+
+-- |Lambda sets of all worlds as lists of diamond conjunctions.
+lambdaAndedDiamonded :: Connection -> LambdaType -> IO [MLFml]
+lambdaAndedDiamonded c lamType = do
+    andedFmls <- lambdaAnded c lamType
+    return (map Diamond andedFmls)
+
+-- |Lambda sets of all worlds as lists of diamond disjunctions.
+lambdaOredDiamonded :: Connection -> LambdaType -> IO [MLFml]
+lambdaOredDiamonded c lamType = do
+    oredFmls <- lambdaOred c lamType
+    return (map Diamond oredFmls)
 
 -- |Lambda formulas of a single world as one disjunction.
-worldsLambdaCombined :: Connection -> LambdaType -> (Fml -> Fml -> Fml) ->
-                        T.Text -> IO (Maybe Fml)
+worldsLambdaCombined :: Connection -> LambdaType -> (MLFml -> MLFml -> MLFml) ->
+                        T.Text -> IO (Maybe MLFml)
 worldsLambdaCombined c lamType j w = do
     fmls <- worldFormulas c lamType w
     return (formulasToJunction j fmls)
     
 -- |Convert a T.Text list into a PL (dis/kon)junction.
-formulasToJunction :: (Fml -> Fml -> Fml) -> [T.Text] -> Maybe Fml
+formulasToJunction :: (MLFml -> MLFml -> MLFml) -> [T.Text] -> Maybe MLFml
 formulasToJunction _ []     = Nothing
 formulasToJunction j (f:fs) =
     let
-      accu = Var f
-      fmls = map Var fs
+      accu = MLVar f
+      fmls = map MLVar fs
     in
       Just (foldl j accu fmls)
 
