@@ -6,7 +6,8 @@ module Cluster
 
 import Control.Monad (liftM)
 import qualified Data.List as L
-import Data.Maybe (catMaybes, fromJust)
+import qualified Data.List.Utils as LU (replace)
+import Data.Maybe (catMaybes, isJust, fromJust, mapMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Database.PostgreSQL.Simple
@@ -17,6 +18,7 @@ import KripkeTypes
 import LogicSearch
 import Model
 import Tfidf
+import Util
 
 data SpacePnt = SpacePnt { name     :: T.Text
                          , position :: [Bool]
@@ -168,53 +170,102 @@ disimilarity x y
     | otherwise            = 1 - similarity x y
 
 -- |Average similarity of pairs in a cluster.
-clusterSim :: Connection -> LambdaType -> [SpacePnt] -> IO (Maybe Double)
-clusterSim c lamType []      = return Nothing
-clusterSim c lamType (x:[])  = return Nothing
-clusterSim c lamType cluster = do
-    let ws    = map name cluster
-    ls        <- mapM (worldFormulas c lamType) ws
-    let ls'   = map S.fromList ls
-    let wsims = [map (similarity l) (L.delete l ls') | l <- ls']
-    let sims  = concat wsims
-    return (Just (sum sims / fromIntegral (length sims)))
+clusterSim :: Model -> [SpacePnt] -> Maybe Double
+clusterSim _ []      = Nothing
+clusterSim _ (x:[])  = Nothing
+clusterSim (Model f lam) cluster = do
+    let wlams = map (S.fromList . lam . name) cluster
+    let sims  = concat [map (similarity l) (L.delete l wlams) | l <- wlams]
+    Just (sum sims / fromIntegral (length sims))
 
 -- |Disimilarity between the formula sets of two clusters.
-clusterDisim :: Connection -> LambdaType -> [SpacePnt] -> [SpacePnt] ->
-                IO (Maybe Double)
-clusterDisim c lamType c1 c2
-    | null c1 || null c2 = return Nothing
-    | otherwise          = do
-        let c1ws = map name c1
-        let c2ws = map name c2
-        c1ls <- liftM concat (mapM (worldFormulas c lamType) c1ws)
-        c2ls <- liftM concat (mapM (worldFormulas c lamType) c2ws)
-        return (Just (disimilarity (S.fromList c1ls) (S.fromList c2ls)))
+clusterDisim :: Model -> [SpacePnt] -> [SpacePnt] -> Maybe Double
+clusterDisim (Model _ lam) c1 c2
+    | null c1 || null c2 = Nothing
+    | otherwise          =
+        let
+          c1ls = concatMap (lam . name) c1
+          c2ls = concatMap (lam . name) c2
+        in
+          Just (disimilarity (S.fromList c1ls) (S.fromList c2ls))
+
 
 -- |Disimilarity scores of one cluster to a list of other clusters.
-clusterDisims :: Connection -> LambdaType -> [[SpacePnt]] -> [SpacePnt] ->
-                 IO [Maybe Double]
-clusterDisims c lamType clusters cl =
-    mapM (clusterDisim c lamType cl) (L.delete cl clusters)
+clusterDisims :: Model -> [[SpacePnt]] -> [SpacePnt] -> [Maybe Double]
+clusterDisims mdl clusters cl = map (clusterDisim mdl cl) (L.delete cl clusters)
+
+-- |Disimilarity scores of one cluster to a list of clusters, maybe including it
+-- self.
+clusterDisims' :: Model -> [[SpacePnt]] -> [SpacePnt] -> [Maybe Double]
+clusterDisims' mdl clusters cl = map (clusterDisim mdl cl) clusters
 
 -- |Average similarity of a list of clusters.
-avgClusterSim :: Connection -> LambdaType -> [[SpacePnt]] -> IO Double
-avgClusterSim c lamType clusters
-    | length clusters < 1 = error "avgClusterSim: < 1 clusters given"
-    | otherwise           = do
-      ss <- mapM (clusterSim c lamType) clusters
-      let ss' = catMaybes ss
-      return (sum ss' / fromIntegral (length ss'))
+avgClusterSim :: Model -> [[SpacePnt]] -> Double
+avgClusterSim mdl clusters
+    | null clusters = error "avgClusterSim: no clusters given"
+    | otherwise     =
+        let ss  = mapMaybe (clusterSim mdl) clusters
+        in  sum ss / fromIntegral (length ss)
 
 -- |Average disimilarity among a list of clusters.
-avgClusterDisim :: Connection -> LambdaType -> [[SpacePnt]] -> IO Double
-avgClusterDisim c lamType clusters
+avgClusterDisim :: Model -> [[SpacePnt]] -> Double
+avgClusterDisim mdl clusters
     | length (filter (not . null) clusters) < 2 =
         error "avgClusterDisim: < 2 unempty clusters given"
-    | otherwise           = do
-      ds <- mapM (clusterDisims c lamType clusters) clusters
-      let ds' = catMaybes (concat ds)
-      return (sum ds' / fromIntegral (length ds'))
+    | otherwise                                 =
+        let
+          ds  = map (clusterDisims mdl clusters) clusters
+          ds' = catMaybes (concat ds)
+        in
+          sum ds' / fromIntegral (length ds')
+
+-- |Merge clusters with too small a disimilarity, fill up empty spots with empty
+-- lists.
+mergeClusters :: Model -> [[SpacePnt]] -> [[SpacePnt]]
+mergeClusters mdl clusters =
+    let
+      mergeList = dropOverlappingPairs (mergeCandidates mdl clusters)
+    in
+      workOffMergeList clusters mergeList
+
+-- |Merge clusters in given list, don't touch any overlapping pairs, replace
+-- second cluster of a merge pair with an empty cluster.
+workOffMergeList :: [[SpacePnt]] -> [(Int, Int)] -> [[SpacePnt]]
+workOffMergeList clusters []     = clusters
+workOffMergeList clusters (x:xs) =
+    let
+        c1  = clusters !! fst x
+        c2  = clusters !! snd x
+        cm  = c1 ++ c2
+        c'  = LU.replace [c1] [cm] clusters
+        c'' = LU.replace [c2] [[]] c'
+    in
+      workOffMergeList c'' xs
+
+-- |Index pairs of clusters with a too small disimilarity.
+mergeCandidates :: Model -> [[SpacePnt]] -> [(Int, Int)]
+mergeCandidates mdl clusters =
+    let
+      ds = map (clusterDisims' mdl clusters) clusters
+      mcs = map mergeCandidate ds
+      pairs = zip [0..] mcs
+      pairs' = filter (isJust . snd) pairs
+    in
+      map (\(x, Just y) -> (x, y)) pairs'
+
+-- |Index of first cluster with 0.0 < disimilarity < 0.9.
+mergeCandidate :: [Maybe Double] -> Maybe Int
+mergeCandidate =
+    L.findIndex (\d -> isJust d && fromJust d > 0.0 && fromJust d < 0.9)
+
+-- |Indexes of Clusters with too small a similarity.
+splitCandidates :: Model -> [[SpacePnt]] -> [Int]
+splitCandidates mdl clusters =
+    let
+      sims = map (clusterSim mdl) clusters
+    in
+      [i | i <- [0..(length sims - 1)], let s = sims !! i, isJust s,
+        fromJust s < 0.01]
 
 -- |Edge count in a total directed graph.
 edgesInDigraphClique :: Int -> Int
