@@ -331,7 +331,7 @@ tld2StemAlgo url
 -- |Filter 2 <= length <= 80 and hasLetters.
 filterFormulas :: [String] -> [String]
 filterFormulas =
-    filter (\x -> hasOkLength x && hasLetters x && isNoStopWord x)
+    filter (\x -> hasOkLength x && hasLetters x && isNoStopWord x && isNoTag x)
 
 -- |True if length between 2 and 80 inclusive.
 hasOkLength :: String -> Bool
@@ -343,6 +343,11 @@ hasOkLength s =
 isNoStopWord :: String -> Bool
 isNoStopWord s = s `notElem` stopWords
 
+-- |True if string doesn't start with < or end with >
+isNoTag :: String -> Bool
+isNoTag ""     = True
+isNoTag (x:xs) = x /= '<' || last xs /= '>'
+
 -- |List of StopWords of different languages.
 stopWords :: [String]
 stopWords = gerStopWords ++ engStopWords
@@ -350,17 +355,18 @@ stopWords = gerStopWords ++ engStopWords
 -- |List of german StopWords.
 gerStopWords :: [String]
 gerStopWords =
-    ["als", "am", "an", "auf", "aus", "bei", "der", "die", "das", "dass",
-     "damit", "dem", "den", "des", "denn", "diese", "diesem", "diesen",
-     "dieser", "dieses", "durch", "ein", "eine", "einem", "einen", "eines",
-     "es", "für", "im", "in", "ist", "mit", "sich", "sie", "sind", "um", "und",
-     "uns", "vom", "von", "vor", "was", "wie", "wir", "wo", "zu", "zum", "zur"]
+    ["aber", "als", "am", "an", "auch", "auf", "aus", "bei", "da", "der", "die",
+     "das", "dass", "damit", "dem", "den", "des", "denn", "diese", "diesem",
+     "diesen", "dieser", "dieses", "du", "durch", "ein", "eine", "einem",
+     "einen", "eines", "es", "für", "ihr", "im", "in", "ist", "mit", "sich",
+     "sie", "sind", "um", "und", "uns", "vom", "von", "vor", "was", "wie",
+     "wir", "wo", "zu", "zum", "zur", "über"]
 
 -- |List of english StopWords.
 engStopWords :: [String]
 engStopWords =
-    ["and", "by", "for", "is", "it", "more", "of", "the", "to", "with", "you",
-     "your"]
+    ["and", "at", "be", "by", "for", "from", "is", "it", "more", "of", "on",
+     "the", "that", "to", "we", "where", "with", "you", "your", "'s"]
 
 -- |Filter out <script>...</script> parts.
 filterScript :: [Tag String] -> [Tag String]
