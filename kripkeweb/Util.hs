@@ -5,6 +5,7 @@ module Util
 , dropRelsWithElemInS
 , dropTransViolations
 , eqListElems
+, dropOverlappingPairs
 , flattenTuples
 , flattenTupleSet
 , hasLetters
@@ -92,4 +93,13 @@ dropTransViolations :: (Eq a) => [(a, a)] -> [(a, a)]
 dropTransViolations rels = 
     let vs = filter (hasTransViolation rels) (flattenTuples rels)
     in  dropRelsWithElemIn vs rels
+
+-- |Drop additional pairs in the list that share an element.
+dropOverlappingPairs :: (Eq a) => [(a, a)] -> [(a, a)]
+dropOverlappingPairs [] = []
+dropOverlappingPairs ((x1, x2):xs) =
+    let
+      ps = filter (\(y1,y2) -> y1 `notElem` [x1,x2] && y2 `notElem` [x1,x2]) xs
+    in
+      (x1, x2) : dropOverlappingPairs ps
 
