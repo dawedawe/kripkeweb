@@ -17,10 +17,16 @@ module LogicSearch
 , isTrueInWorlds
 , isUniversallyTrue
 , lambdaAnded
+, lambdaAndedBoxed
+, lambdaAndedBoxedNegated
 , lambdaAndedDiamonded
+, lambdaAndedDiamondedNegated
 , lambdaAndedNegated
 , lambdaOred
+, lambdaOredBoxed
+, lambdaOredBoxedNegated
 , lambdaOredDiamonded
+, lambdaOredDiamondedNegated
 , lambdaOredNegated
 , satWorlds
 , satFWorlds
@@ -492,6 +498,42 @@ lambdaOredDiamonded :: Connection -> LambdaType -> IO [MLFml]
 lambdaOredDiamonded c lamType = do
     oredFmls <- lambdaOred c lamType
     return (map Diamond oredFmls)
+
+-- |Lambda sets of all worlds as lists of negated diamond conjunctions.
+lambdaAndedDiamondedNegated :: Connection -> LambdaType -> IO [MLFml]
+lambdaAndedDiamondedNegated c lamType = do
+    andedDiamondedFmls <- lambdaAndedDiamonded c lamType
+    return (map MLNot andedDiamondedFmls)
+
+-- |Lambda sets of all worlds as lists of negated diamond disjunctions.
+lambdaOredDiamondedNegated :: Connection -> LambdaType -> IO [MLFml]
+lambdaOredDiamondedNegated c lamType = do
+    oredDiamondedFmls <- lambdaOredDiamonded c lamType
+    return (map MLNot oredDiamondedFmls)
+
+-- |Lambda sets of all worlds as lists of diamond conjunctions.
+lambdaAndedBoxed :: Connection -> LambdaType -> IO [MLFml]
+lambdaAndedBoxed c lamType = do
+    andedFmls <- lambdaAnded c lamType
+    return (map Box andedFmls)
+
+-- |Lambda sets of all worlds as lists of diamond disjunctions.
+lambdaOredBoxed :: Connection -> LambdaType -> IO [MLFml]
+lambdaOredBoxed c lamType = do
+    oredFmls <- lambdaOred c lamType
+    return (map Box oredFmls)
+
+-- |Lambda sets of all worlds as lists of negated diamond conjunctions.
+lambdaAndedBoxedNegated :: Connection -> LambdaType -> IO [MLFml]
+lambdaAndedBoxedNegated c lamType = do
+    andedBoxedFmls <- lambdaAndedBoxed c lamType
+    return (map MLNot andedBoxedFmls)
+
+-- |Lambda sets of all worlds as lists of negated diamond disjunctions.
+lambdaOredBoxedNegated :: Connection -> LambdaType -> IO [MLFml]
+lambdaOredBoxedNegated c lamType = do
+    oredBoxedFmls <- lambdaOredBoxed c lamType
+    return (map MLNot oredBoxedFmls)
 
 -- |Lambda formulas of a single world as one disjunction.
 worldsLambdaCombined :: Connection -> LambdaType -> (MLFml -> MLFml -> MLFml) ->
