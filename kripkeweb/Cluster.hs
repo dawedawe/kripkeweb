@@ -4,7 +4,6 @@ module Cluster
 , fmlSpacePoses
 ) where
 
-import Control.Monad (liftM)
 import qualified Data.List as L
 import qualified Data.List.Utils as LU (replace)
 import Data.Maybe (catMaybes, isJust, fromJust, mapMaybe)
@@ -16,8 +15,6 @@ import System.Random
 import DB
 import KripkeTypes
 import LogicSearch
-import Model
-import Tfidf
 import Util
 
 data SpacePnt = SpacePnt { name     :: T.Text
@@ -30,8 +27,8 @@ instance Show SpacePnt where
 -- |fmlSpacePos vectors of all given worlds.
 fmlSpacePoses :: (AsLambdaType f, PTrueIn f) => Model -> [f] -> [T.Text] ->
                  [SpacePnt]
-fmlSpacePoses mdl@(Model (Frame w r) _) fmls ws =
-    map (fmlSpacePos mdl fmls) (S.toList w)
+fmlSpacePoses mdl fmls ws =
+    map (fmlSpacePos mdl fmls) ws
 
 -- |Position of a world with regard to a list of formulas spanning a space.
 -- Expects the formulas to be already in the right LambdaType.
@@ -80,7 +77,7 @@ minCentRandomness centroid =
     let
       ts = length (filter (== True) centroid)
       fs = length (filter (== False) centroid)
-      p  = fromIntegral (min ts fs) / fromIntegral (max ts fs)
+      p  = fromIntegral (min ts fs) / fromIntegral (max ts fs) :: Double
     in
       p >= 0.3
 
@@ -107,9 +104,8 @@ randomCentroids d k i
 -- |kMeans implementation for a boolean n dimensional space.
 kMeans :: (AsLambdaType f, PTrueIn f) => Model -> [f] -> Int ->
           IO [([Bool], [SpacePnt])]
-kMeans mdl@(Model (Frame w r) l) fmls k = do
+kMeans mdl@(Model (Frame w _) _) fmls k = do
     let dim    = length fmls
-    -- centroids  <- mapM (\_ -> randomBools dims) [0..(k - 1)]
     centroids  <- randomCentroids dim k 20
     let wPoses = fmlSpacePoses mdl fmls (S.toList w)
     let hOfx   = map (closestCentroidIdx centroids) wPoses
@@ -121,8 +117,8 @@ kMeans mdl@(Model (Frame w r) l) fmls k = do
 -- |Looping function for kMeans, ends when centroids stop moving or after i
 -- loops.
 kMeansLoop :: [[SpacePnt]] -> [[Bool]] -> Int -> Int -> [([Bool], [SpacePnt])]
-kMeansLoop clusters centroids k 0 = zip centroids clusters
-kMeansLoop clusters centroids k i = do
+kMeansLoop clusters centroids _ 0 = zip centroids clusters
+kMeansLoop clusters centroids k j = do
     let hOfx       = map (closestCentroidIdx centroids) (concat clusters)
     let wk         = zip (concat clusters) hOfx
     let clusters'  =
@@ -132,7 +128,7 @@ kMeansLoop clusters centroids k i = do
     -- deal with possible empty clusters and the resulting null-like centroids
     let centroids'' = keepCentroidsOfEmptyClusters centroids centroids'
     if centroids'' /= centroids
-      then kMeansLoop clusters' centroids'' k (pred i)
+      then kMeansLoop clusters' centroids'' k (pred j)
       else zip centroids'' clusters'
 
 -- |Determine the index number of the closes centroid.
@@ -171,12 +167,14 @@ disimilarity x y
 
 -- |Average similarity of pairs in a cluster.
 clusterSim :: Model -> [SpacePnt] -> Maybe Double
-clusterSim _ []      = Nothing
-clusterSim _ (x:[])  = Nothing
-clusterSim (Model f lam) cluster = do
-    let wlams = map (S.fromList . lam . name) cluster
-    let sims  = concat [map (similarity l) (L.delete l wlams) | l <- wlams]
-    Just (sum sims / fromIntegral (length sims))
+clusterSim (Model _ lam) cluster
+    | length cluster < 2 = Nothing
+    | otherwise          =
+        let
+          wlams = map (S.fromList . lam . name) cluster
+          sims  = concat [map (similarity l) (L.delete l wlams) | l <- wlams]
+        in
+          Just (sum sims / fromIntegral (length sims))
 
 -- |Disimilarity between the formula sets of two clusters.
 clusterDisim :: Model -> [SpacePnt] -> [SpacePnt] -> Maybe Double
@@ -273,7 +271,7 @@ edgesInDigraphClique n = n * (n - 1)
 
 -- |Links in a cluster / edge count of a digraph clique.
 clusterToDigraphCliqueMeasure :: Connection -> [SpacePnt] -> IO Double
-clusterToDigraphCliqueMeasure c []      =
+clusterToDigraphCliqueMeasure _ []      =
     error "clusterToTotalDGraphMeasure: empty cluster given"
 clusterToDigraphCliqueMeasure c cluster = do
     let ws = map name cluster
