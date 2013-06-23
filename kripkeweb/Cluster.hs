@@ -27,8 +27,7 @@ instance Show SpacePnt where
 -- |fmlSpacePos vectors of all given worlds.
 fmlSpacePoses :: (AsLambdaType f, PTrueIn f) => Model -> [f] -> [T.Text] ->
                  [SpacePnt]
-fmlSpacePoses mdl fmls ws =
-    map (fmlSpacePos mdl fmls) ws
+fmlSpacePoses mdl fmls = map (fmlSpacePos mdl fmls)
 
 -- |Position of a world with regard to a list of formulas spanning a space.
 -- Expects the formulas to be already in the right LambdaType.
