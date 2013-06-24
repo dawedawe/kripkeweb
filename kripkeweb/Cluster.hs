@@ -24,6 +24,8 @@ data SpacePnt = SpacePnt { name     :: T.Text
 instance Show SpacePnt where
     show (SpacePnt n p) = show (n, show p)
 
+type Cluster = [SpacePnt]
+
 -- |fmlSpacePos vectors of all given worlds.
 fmlSpacePoses :: (AsLambdaType f, PTrueIn f) => Model -> [f] -> [T.Text] ->
                  [SpacePnt]
@@ -102,7 +104,7 @@ randomCentroids d k i
 
 -- |kMeans implementation for a boolean n dimensional space.
 kMeans :: (AsLambdaType f, PTrueIn f) => Model -> [f] -> Int ->
-          IO [([Bool], [SpacePnt])]
+          IO [([Bool], Cluster)]
 kMeans mdl@(Model (Frame w _) _) fmls k = do
     let dim    = length fmls
     centroids  <- randomCentroids dim k 20
@@ -115,7 +117,7 @@ kMeans mdl@(Model (Frame w _) _) fmls k = do
 
 -- |Looping function for kMeans, ends when centroids stop moving or after i
 -- loops.
-kMeansLoop :: [[SpacePnt]] -> [[Bool]] -> Int -> Int -> [([Bool], [SpacePnt])]
+kMeansLoop :: [Cluster] -> [[Bool]] -> Int -> Int -> [([Bool], Cluster)]
 kMeansLoop clusters centroids _ 0 = zip centroids clusters
 kMeansLoop clusters centroids k j = do
     let hOfx       = map (closestCentroidIdx centroids) (concat clusters)
@@ -147,7 +149,7 @@ keepCentroidsOfEmptyClusters os ns
     | otherwise              =
         map (\(o, n) -> if null n then o else n) (zip os ns)
 
--- |Simple similarity measure: |x intersect y| / |x union y|
+-- |Simple similarity measure: |x intersect y| / |x union y|.
 similarity :: (Eq a, Ord a) => S.Set a -> S.Set a -> Double
 similarity x y
     | S.null x && S.null y = error "similarity: empty sets"
@@ -158,14 +160,14 @@ similarity x y
         in
           fromIntegral interSize / fromIntegral unionSize
 
--- |Simple disimilarity measure: 1 - similarity x y
+-- |Simple disimilarity measure: 1 - similarity x y.
 disimilarity :: (Eq a, Ord a) => S.Set a -> S.Set a -> Double
 disimilarity x y
     | S.null x && S.null y = error "disimilarity: empty sets"
     | otherwise            = 1 - similarity x y
 
 -- |Average similarity of pairs in a cluster.
-clusterSim :: Model -> [SpacePnt] -> Maybe Double
+clusterSim :: Model -> Cluster -> Maybe Double
 clusterSim (Model _ lam) cluster
     | length cluster < 2 = Nothing
     | otherwise          =
@@ -176,7 +178,7 @@ clusterSim (Model _ lam) cluster
           Just (sum sims / fromIntegral (length sims))
 
 -- |Disimilarity between the formula sets of two clusters.
-clusterDisim :: Model -> [SpacePnt] -> [SpacePnt] -> Maybe Double
+clusterDisim :: Model -> Cluster -> Cluster -> Maybe Double
 clusterDisim (Model _ lam) c1 c2
     | null c1 || null c2 = Nothing
     | otherwise          =
@@ -188,16 +190,16 @@ clusterDisim (Model _ lam) c1 c2
 
 
 -- |Disimilarity scores of one cluster to a list of other clusters.
-clusterDisims :: Model -> [[SpacePnt]] -> [SpacePnt] -> [Maybe Double]
+clusterDisims :: Model -> [Cluster] -> Cluster -> [Maybe Double]
 clusterDisims mdl clusters cl = map (clusterDisim mdl cl) (L.delete cl clusters)
 
 -- |Disimilarity scores of one cluster to a list of clusters, maybe including it
 -- self.
-clusterDisims' :: Model -> [[SpacePnt]] -> [SpacePnt] -> [Maybe Double]
+clusterDisims' :: Model -> [Cluster] -> Cluster -> [Maybe Double]
 clusterDisims' mdl clusters cl = map (clusterDisim mdl cl) clusters
 
 -- |Average similarity of a list of clusters.
-avgClusterSim :: Model -> [[SpacePnt]] -> Double
+avgClusterSim :: Model -> [Cluster] -> Double
 avgClusterSim mdl clusters
     | null clusters = error "avgClusterSim: no clusters given"
     | otherwise     =
@@ -205,7 +207,7 @@ avgClusterSim mdl clusters
         in  sum ss / fromIntegral (length ss)
 
 -- |Average disimilarity among a list of clusters.
-avgClusterDisim :: Model -> [[SpacePnt]] -> Double
+avgClusterDisim :: Model -> [Cluster] -> Double
 avgClusterDisim mdl clusters
     | length (filter (not . null) clusters) < 2 =
         error "avgClusterDisim: < 2 unempty clusters given"
@@ -218,7 +220,7 @@ avgClusterDisim mdl clusters
 
 -- |Merge clusters with too small a disimilarity, fill up empty spots with empty
 -- lists.
-mergeClusters :: Model -> [[SpacePnt]] -> [[SpacePnt]]
+mergeClusters :: Model -> [Cluster] -> [Cluster]
 mergeClusters mdl clusters =
     let
       mergeList = dropOverlappingPairs (mergeCandidates mdl clusters)
@@ -227,7 +229,7 @@ mergeClusters mdl clusters =
 
 -- |Merge clusters in given list, don't touch any overlapping pairs, replace
 -- second cluster of a merge pair with an empty cluster.
-workOffMergeList :: [[SpacePnt]] -> [(Int, Int)] -> [[SpacePnt]]
+workOffMergeList :: [Cluster] -> [(Int, Int)] -> [Cluster]
 workOffMergeList clusters []     = clusters
 workOffMergeList clusters (x:xs) =
     let
@@ -240,7 +242,7 @@ workOffMergeList clusters (x:xs) =
       workOffMergeList c'' xs
 
 -- |Index pairs of clusters with a too small disimilarity.
-mergeCandidates :: Model -> [[SpacePnt]] -> [(Int, Int)]
+mergeCandidates :: Model -> [Cluster] -> [(Int, Int)]
 mergeCandidates mdl clusters =
     let
       ds = map (clusterDisims' mdl clusters) clusters
@@ -258,18 +260,34 @@ mergeCandidate =
 -- |Indexes of Clusters with too small a similarity.
 splitCandidates :: Model -> [[SpacePnt]] -> [Int]
 splitCandidates mdl clusters =
+    let sims = map (clusterSim mdl) clusters
+    in  [i | i <- [0..(length sims - 1)], let s = sims !! i, isJust s,
+          fromJust s < 0.1]
+
+-- |Split clusters with too small a similarity into two halves.
+splitClusters :: Model -> [Cluster] -> [Cluster]
+splitClusters mdl clusters =
+    let candidates = splitCandidates mdl clusters
+    in  concat [if i `elem` candidates
+                  then splitCluster (clusters !! i)
+                  else [clusters !! i]
+                  | i <- [0..(length clusters - 1)]]
+
+-- |Split a cluster into two halves.
+splitCluster :: [a] -> [[a]]
+splitCluster cluster =
     let
-      sims = map (clusterSim mdl) clusters
+      c0 = take (length cluster `div` 2) cluster
+      c1 = drop (length c0) cluster
     in
-      [i | i <- [0..(length sims - 1)], let s = sims !! i, isJust s,
-        fromJust s < 0.01]
+      [c0, c1]
 
 -- |Edge count in a total directed graph.
 edgesInDigraphClique :: Int -> Int
 edgesInDigraphClique n = n * (n - 1)
 
 -- |Links in a cluster / edge count of a digraph clique.
-clusterToDigraphCliqueMeasure :: Connection -> [SpacePnt] -> IO Double
+clusterToDigraphCliqueMeasure :: Connection -> Cluster -> IO Double
 clusterToDigraphCliqueMeasure _ []      =
     error "clusterToTotalDGraphMeasure: empty cluster given"
 clusterToDigraphCliqueMeasure c cluster = do
