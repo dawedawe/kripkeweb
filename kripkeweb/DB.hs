@@ -7,6 +7,7 @@ module DB
 , deleteStemLangWorld
 , documentFrequency
 , formulasInLambda
+, indegreeDistribution
 , initPageRankTable
 , insertLambdaRelation
 , insertAccessRel
@@ -15,6 +16,7 @@ module DB
 , linkCountAmongWorlds
 , myConn
 , negateLambaWorlds
+, outdegreeDistribution
 , outLinkCount
 , outLinkCountAndPageRankofSources
 , pathsTo
