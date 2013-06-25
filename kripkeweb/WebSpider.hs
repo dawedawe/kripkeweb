@@ -371,7 +371,7 @@ gerStopWords =
 engStopWords :: [String]
 engStopWords =
     ["and", "at", "be", "by", "for", "from", "is", "it", "more", "of", "on",
-     "the", "that", "to", "we", "where", "with", "you", "your", "'s"]
+     "the", "that", "to", "we", "where", "with", "you", "your", "'ll", "'s"]
 
 -- |Filter out <script>...</script> parts.
 filterScript :: [Tag String] -> [Tag String]
