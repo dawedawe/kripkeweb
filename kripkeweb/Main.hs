@@ -43,10 +43,7 @@ main = do
         c (proxy conf) (optUrl (opts conf)) (optRecDepth (opts conf))
 
     when (BuildLambdaRel `S.member` optFlags (opts conf)) $
-      buildLambdaStore c (getLambdaRelation (proxy conf))
-
-    when (BuildMLambdaRel `S.member` optFlags (opts conf)) $
-      buildLambdaStore c (getMetaLambdaRel (proxy conf))
+      buildLambdaStore c (getLambdaRels (proxy conf))
 
     when (CalcPageRank `S.member` optFlags (opts conf)) $
       calcAndUpdatePageRanks c (optPgIters (opts conf))
@@ -124,25 +121,26 @@ testQuantors conf = do
     let qWorlds = ["http://www.heise.de", "http://www.apple.com"] :: [T.Text]
     let p cn _ w = stemLang cn w >>= \l -> return (l == "Dutch")
 
-    x <- eval2B c Raw (All qWorlds p)
+    x <- eval2B c BdyRaw (All qWorlds p)
     print x
-    y <- eval2B c Raw (Ex qWorlds p)
+    y <- eval2B c BdyRaw (Ex qWorlds p)
     print y
 
 testAllTopTfidf :: [String] -> IO ()
 testAllTopTfidf args = do
     let n = read (head args)
     c <- connect myConn
-    tops <- allTopTfidf c Raw n
+    tops <- allTopTfidf c BdyRaw n
     mapM_ print tops
 
 testLambda :: [String] -> IO ()
 testLambda args = do
     let url = head args
     c    <- connect myConn
-    frms <- lambda c Raw (T.pack url)
+    frms <- lambda c BdyRaw (T.pack url)
     mapM_ print frms
 
+{--
 testGetAndInsertLambdaRelation :: [String] -> IO ()
 testGetAndInsertLambdaRelation args = do
     let url = T.pack (head args)
@@ -153,6 +151,7 @@ testGetAndInsertLambdaRelation args = do
     insertLambdaRelation c Stem sf
     insertLambdaRelation c Soundex ef
     insertStemLang c url sa
+--}
 
 testPathsTo :: [String] -> IO ()
 testPathsTo args = do

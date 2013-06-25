@@ -19,21 +19,25 @@ import DB
 import KripkeTypes
 import WebSpider
 
--- |lambda function of a Kripke Model: Formulas of given world.
+-- |lambda function of a Kripke Model stored in the db: Formulas of given world.
 lambda :: Connection -> LambdaType -> T.Text -> IO [T.Text]
 lambda = worldFormulas
 
--- |Fetch raw/stemmed/sonudexed formulas via the given function of a single url
--- and store them.
+-- |Fetch meta/body - raw/stemmed/sonudexed formulas via the given function of
+-- a single url and store them.
 getAndStoreLambdaRel :: Connection ->
                         (T.Text -> IO (LambdaRels, Maybe Algorithm)) ->
                         T.Text -> IO ()
 getAndStoreLambdaRel c func url = do
-    (LambdaRels rf sf ef, sa) <- func url
-    insertLambdaRelation c Raw rf
-    insertLambdaRelation c Stem sf
-    insertLambdaRelation c Soundex ef
-    when (nTuples sf /= S.empty) $ insertStemLang c url sa
+    (LambdaRels mrf msf mef brf bsf bef, sa) <- func url
+    insertLambdaRelation c MtaRaw mrf
+    insertLambdaRelation c MtaStem msf
+    insertLambdaRelation c MtaSoundex mef
+    insertLambdaRelation c BdyRaw brf
+    insertLambdaRelation c BdyStem bsf
+    insertLambdaRelation c BdySoundex bef
+    when (nTuples bsf /= S.empty || nTuples msf /= S.empty) $
+      insertStemLang c url sa
 
 -- |Apply getAndStoreLambdaRel to all sources in links.
 buildLambdaStore :: Connection ->
@@ -59,12 +63,20 @@ buildRelativeR c prx url depth = do
 
 -- |Postprocess a term according to a LambdaType and to a Maybe world
 termAsLamType :: Connection -> LambdaType -> Maybe T.Text -> T.Text -> IO T.Text
-termAsLamType _ Raw   _       t = return t
-termAsLamType c Stem (Just w) t = do
+termAsLamType _ MtaRaw   _       t = return t
+termAsLamType _ BdyRaw   _       t = return t
+termAsLamType c MtaStem (Just w) t = do
     sa <- stemLang c w
     if sa == T.empty
       then return t
       else return (stem ((myStemAlgo . read . show) sa) t)
-termAsLamType _ Stem Nothing  t = return t
-termAsLamType _ Soundex _     t = return ((T.pack . soundexNARA . T.unpack) t)
+termAsLamType c BdyStem (Just w) t = do
+    sa <- stemLang c w
+    if sa == T.empty
+      then return t
+      else return (stem ((myStemAlgo . read . show) sa) t)
+termAsLamType _ MtaStem Nothing  t = return t
+termAsLamType _ BdyStem Nothing  t = return t
+termAsLamType _ MtaSoundex _     t = return ((T.pack . soundexNARA . T.unpack) t)
+termAsLamType _ BdySoundex _     t = return ((T.pack . soundexNARA . T.unpack) t)
 

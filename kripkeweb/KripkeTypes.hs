@@ -39,16 +39,22 @@ data Frame = Frame { wSet   :: S.Set Text
                    } deriving (Eq, Ord, Show)
 
 -- |Type to hold all versions of postprocessed lambda data of a world.
-data LambdaRels = LambdaRels { rawLamRels   :: OneToNtuples
-                             , stemLamRels  :: OneToNtuples
-                             , sndexLamRels :: OneToNtuples
+data LambdaRels = LambdaRels { mtaRawLamRels   :: OneToNtuples
+                             , mtaStemLamRels  :: OneToNtuples
+                             , mtaSndexLamRels :: OneToNtuples
+                             , bdyRawLamRels   :: OneToNtuples
+                             , bdyStemLamRels  :: OneToNtuples
+                             , bdySndexLamRels :: OneToNtuples
                              } deriving (Show)
 
 -- |Type to distinguish the different types of lambda formula postprocessing.
-data LambdaType = Raw
-                | Stem
-                | Soundex
-                  deriving (Eq, Read, Show)
+data LambdaType = MtaRaw
+                | MtaStem
+                | MtaSoundex
+                | BdyRaw
+                | BdyStem
+                | BdySoundex
+                  deriving (Eq, Ord, Read, Show)
 
 -- |Pure version of the lambda function.
 lambdaPure :: M.Map Text [Text] -> Text -> [Text]

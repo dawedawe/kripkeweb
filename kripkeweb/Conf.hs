@@ -47,7 +47,6 @@ data Flag = BuildR              -- build accessability relation R
           | PLFmlEval           -- evaluate propositional logic formula
           | MLFmlEval           -- evaluate modal logic formula
           | BuildLambdaRel      -- build the lambda relation
-          | BuildMLambdaRel     -- build the lambda relation using meta info
           | LambdaAccum         -- group and accumulate Lambda formulas
           | InLinkRings
           | OutLinkRings
@@ -74,7 +73,7 @@ defaultOptions = Options { optUrl      = T.empty
                          , optFml      = T.empty
                          , optFlags    = S.empty
                          , optWords    = []
-                         , optLamType  = Raw
+                         , optLamType  = BdyRaw
                          }
 
 progName :: String
@@ -111,10 +110,6 @@ options = [
       (NoArg (\optns -> let f = optFlags optns
                         in  optns { optFlags = BuildLambdaRel `S.insert` f }))
       "build lambda relation"
-    , Option "" ["metalamrel"]
-      (NoArg (\optns -> let f = optFlags optns
-                        in  optns { optFlags = BuildMLambdaRel `S.insert` f }))
-      "build lambda relation using meta information"
     , Option "p" ["pagerankcalc"]
       (ReqArg (\i optns -> let f = optFlags optns
                            in  optns { optFlags   = CalcPageRank `S.insert` f,

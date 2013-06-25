@@ -3,8 +3,7 @@
 module WebSpider
 ( accessabilitySet
 , getDomainAsText
-, getLambdaRelation
-, getMetaLambdaRel
+, getLambdaRels
 , spider
 , spiderHO
 , spiderRelHO
@@ -208,39 +207,45 @@ getPage prx url =
 getTags :: Maybe Proxy -> String -> IO [Tag String]
 getTags prx url = getPage prx url >>= \p -> return ((canonicalizeTags . tags) p)
 
--- |Normalized and filttered raw/stemmed/soundexed versions of formulas of an
--- url.
-getLambdaRelation :: Maybe Proxy -> T.Text -> IO (LambdaRels, Maybe Algorithm)
-getLambdaRelation prx url = do
-    tgs      <- getTags prx (T.unpack url)
-    let fmls = (filterFormulas . map lowerString .
+-- |Normalized and filttered metaraw/metastemmed/metasoundexed,
+-- raw/stemmed/soundexed versions of formulas of an url.
+getLambdaRels :: Maybe Proxy -> T.Text -> IO (LambdaRels, Maybe Algorithm)
+getLambdaRels prx url = do
+    tgs         <- getTags prx (T.unpack url)
+    let mtaFmls = parseMeta tgs
+    let bdyFmls = (filterFormulas . map lowerString .
                   tokenize . innerText . filterScript) tgs
-    return (constructLambdaRels url tgs fmls)
+    return (constructLambdaRels url tgs mtaFmls bdyFmls)
 
-getMetaLambdaRel :: Maybe Proxy -> T.Text -> IO (LambdaRels, Maybe Algorithm)
-getMetaLambdaRel prx url = do
-    tgs       <- getTags prx (T.unpack url)
-    let fmls  = parseMeta tgs
-    return (constructLambdaRels url tgs fmls)
-   
-constructLambdaRels :: T.Text -> [Tag String] -> [String] ->
+constructLambdaRels :: T.Text -> [Tag String] -> [String] -> [String] ->
                        (LambdaRels, Maybe Algorithm)
-constructLambdaRels url tgs fmls =
+constructLambdaRels url tgs mtaFmls bdyFmls =
     let
-    -- raw
-      ufrms = addCount (map T.pack fmls)
-      r1    = OneToNtuples url (S.fromList ufrms)
-    -- stemmed
-      sa    = chooseStemAlgo (T.unpack url) tgs
-      sf    = constructStemFunc sa
-      sfmls = addCount (map (sf . T.pack) fmls)
-      r2    = OneToNtuples url (S.fromList sfmls)
-    -- soundexed
-      efmls = filter isSoundExHash (map soundexNARA fmls)
-      r3'   = addCount (map T.pack efmls)
-      r3    = OneToNtuples url (S.fromList r3')
+    -- meta raw
+      muFmls = addCount (map T.pack mtaFmls)
+      mr1    = OneToNtuples url (S.fromList muFmls)
+    -- meta stemmed
+      sa     = chooseStemAlgo (T.unpack url) tgs
+      sf     = constructStemFunc sa
+      msFmls = addCount (map (sf . T.pack) mtaFmls)
+      mr2    = OneToNtuples url (S.fromList msFmls)
+    -- meta soundexed
+      mefmls = filter isSoundExHash (map soundexNARA mtaFmls)
+      mr3'   = addCount (map T.pack mefmls)
+      mr3    = OneToNtuples url (S.fromList mr3')
+
+    -- body raw
+      buFmls = addCount (map T.pack bdyFmls)
+      br1    = OneToNtuples url (S.fromList buFmls)
+    -- body stemmed
+      bsFmls = addCount (map (sf . T.pack) bdyFmls)
+      br2    = OneToNtuples url (S.fromList bsFmls)
+    -- body soundexed
+      beFmls = filter isSoundExHash (map soundexNARA bdyFmls)
+      br3'   = addCount (map T.pack beFmls)
+      br3    = OneToNtuples url (S.fromList br3')
     in
-      (LambdaRels r1 r2 r3, sa)
+      (LambdaRels mr1 mr2 mr3 br1 br2 br3, sa)
 
 -- |Add Count to the list of formulas.
 addCount :: [T.Text] -> [(T.Text, Int)]
