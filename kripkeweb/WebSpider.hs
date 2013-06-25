@@ -284,16 +284,23 @@ parseMeta :: [Tag String] -> [String]
 parseMeta tgs =
     let
       meta      = "meta" :: String
-      descTags0 = filter (~== TagOpen meta [("name", "description")]) tgs
-      descTags1 = filter (~== TagOpen meta [("http-equiv", "description")]) tgs
-      keywTags0 = filter (~== TagOpen meta [("name", "keywords")]) tgs
-      keywTags1 = filter (~== TagOpen meta [("http-equiv", "keywords")]) tgs
-      desc0     = getTagContent descTags0
-      desc1     = getTagContent descTags1
-      keyw0     = getTagContent keywTags0
-      keyw1     = getTagContent keywTags1
-      metaWords = words (replace "," " "
-                        (desc0 ++ " " ++ desc1 ++ " " ++ keyw0 ++ " " ++ keyw1))
+      descTags  = filter (\t ->
+                    (t ~== TagOpen meta [("name", "description")]) ||
+                    (t ~== TagOpen meta [("name", "Description")]) ||
+                    (t ~== TagOpen meta [("name", "DESCRIPTION")]) ||
+                    (t ~== TagOpen meta [("http-equiv", "description")]) ||
+                    (t ~== TagOpen meta [("http-equiv", "Description")]) ||
+                    (t ~== TagOpen meta [("http-equiv", "DESCRIPTION")])) tgs
+      keywTags  = filter (\t ->
+                    (t ~== TagOpen meta [("name", "keywords")]) ||
+                    (t ~== TagOpen meta [("name", "Keywords")]) ||
+                    (t ~== TagOpen meta [("name", "KEYWORDS")]) ||
+                    (t ~== TagOpen meta [("http-equiv", "keywords")]) ||
+                    (t ~== TagOpen meta [("http-equiv", "Keywords")]) ||
+                    (t ~== TagOpen meta [("http-equiv", "KEYWORDS")])) tgs
+      desc      = getTagContent descTags
+      keyw      = getTagContent keywTags
+      metaWords = words (replace "," " " (desc ++ " " ++ keyw))
     in
       (nub . filterFormulas . map lowerString . concatMap tokenize) metaWords
 
