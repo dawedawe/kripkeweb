@@ -279,21 +279,28 @@ parseLang t@(TagOpen "html" _ : _) =
 parseLang (_:xs)                   = parseLang xs
 parseLang []                       = Nothing
 
+-- |Parse the meta description and keywords out of the tags.
 parseMeta :: [Tag String] -> [String]
 parseMeta tgs =
     let
-      meta = "meta" :: String
-      descMetaTags = filter (~== TagOpen meta [("name", "description")]) tgs
-      keywMetaTags = filter (~== TagOpen meta [("name", "keywords")]) tgs
-      desc         = if null descMetaTags
-                       then []
-                       else fromAttrib "content" (head descMetaTags)
-      keyw         = if null keywMetaTags
-                       then []
-                       else fromAttrib "content" (head keywMetaTags)
-      ws           = words (replace "," " " (desc ++ keyw))
+      meta      = "meta" :: String
+      descTags0 = filter (~== TagOpen meta [("name", "description")]) tgs
+      descTags1 = filter (~== TagOpen meta [("http-equiv", "description")]) tgs
+      keywTags0 = filter (~== TagOpen meta [("name", "keywords")]) tgs
+      keywTags1 = filter (~== TagOpen meta [("http-equiv", "keywords")]) tgs
+      desc0     = getTagContent descTags0
+      desc1     = getTagContent descTags1
+      keyw0     = getTagContent keywTags0
+      keyw1     = getTagContent keywTags1
+      metaWords = words (replace "," " "
+                        (desc0 ++ " " ++ desc1 ++ " " ++ keyw0 ++ " " ++ keyw1))
     in
-      (nub . filterFormulas . map lowerString . concatMap tokenize) ws
+      (nub . filterFormulas . map lowerString . concatMap tokenize) metaWords
+
+-- |Get the content ouf of the first tag in the given list if it's there.
+getTagContent :: [Tag String] -> String
+getTagContent []    = ""
+getTagContent (x:_) = fromAttrib "content" x
 
 -- |HTML lang attribute to Snowball stemming Algorithm.
 langAttr2StemAlgo :: String -> Maybe Algorithm
