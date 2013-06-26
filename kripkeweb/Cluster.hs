@@ -149,6 +149,9 @@ keepCentroidsOfEmptyClusters os ns
     | otherwise              =
         map (\(o, n) -> if null n then o else n) (zip os ns)
 
+--------------------------------------------------------------------------------
+-- functions for similarity/disimilarity measures
+
 -- |Simple similarity measure: |x intersect y| / |x union y|.
 similarity :: (Eq a, Ord a) => S.Set a -> S.Set a -> Double
 similarity x y
@@ -214,6 +217,9 @@ avgClusterDisim mdl clusters
         let ds  = concatMap (clusterDisims mdl clusters) clusters
         in  sum (catMaybes ds) / fromIntegral (length ds)
 
+--------------------------------------------------------------------------------
+-- functions for cluster merging/splitting
+
 -- |Merge clusters with too small a disimilarity, fill up empty spots with empty
 -- lists.
 mergeClusters :: Model -> [Cluster] -> [Cluster]
@@ -277,6 +283,9 @@ splitCluster cluster =
       c1 = drop (length c0) cluster
     in
       [c0, c1]
+
+--------------------------------------------------------------------------------
+-- functions for graph related measures
 
 -- |Edge count in a total directed graph.
 edgesInDigraphClique :: Int -> Int
