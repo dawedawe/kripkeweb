@@ -113,7 +113,7 @@ kMeans mdl@(Model (Frame w _) _) fmls k = do
     let wk     = zip wPoses hOfx
     let clusters =
           [map fst c | i <- [0..(k - 1)], let c = filter ((== i) . snd) wk]
-    return (kMeansLoop clusters centroids k 5)
+    return (kMeansLoop clusters centroids k 1)
 
 -- |Looping function for kMeans, ends when centroids stop moving or after i
 -- loops.
@@ -152,7 +152,8 @@ keepCentroidsOfEmptyClusters os ns
 -- |Simple similarity measure: |x intersect y| / |x union y|.
 similarity :: (Eq a, Ord a) => S.Set a -> S.Set a -> Double
 similarity x y
-    | S.null x && S.null y = error "similarity: empty sets"
+    | S.null x && S.null y = 1.0
+    | S.null x /= S.null y = 0.0
     | otherwise            =
         let
           interSize = S.size (x `S.intersection` y)
@@ -162,9 +163,7 @@ similarity x y
 
 -- |Simple disimilarity measure: 1 - similarity x y.
 disimilarity :: (Eq a, Ord a) => S.Set a -> S.Set a -> Double
-disimilarity x y
-    | S.null x && S.null y = error "disimilarity: empty sets"
-    | otherwise            = 1 - similarity x y
+disimilarity x y = 1 - similarity x y
 
 -- |Average similarity of pairs in a cluster.
 clusterSim :: Model -> Cluster -> Maybe Double
@@ -212,11 +211,8 @@ avgClusterDisim mdl clusters
     | length (filter (not . null) clusters) < 2 =
         error "avgClusterDisim: < 2 unempty clusters given"
     | otherwise                                 =
-        let
-          ds  = map (clusterDisims mdl clusters) clusters
-          ds' = catMaybes (concat ds)
-        in
-          sum ds' / fromIntegral (length ds')
+        let ds  = concatMap (clusterDisims mdl clusters) clusters
+        in  sum (catMaybes ds) / fromIntegral (length ds)
 
 -- |Merge clusters with too small a disimilarity, fill up empty spots with empty
 -- lists.
