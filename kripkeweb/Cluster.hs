@@ -220,14 +220,20 @@ avgClusterDisim mdl clusters
 --------------------------------------------------------------------------------
 -- functions for cluster merging/splitting
 
+-- |Lowest acceptable cluster similarity in decision to split or not to split
+minClusterSimilarity :: Double
+minClusterSimilarity = 0.1
+
+-- |Lowest acceptable cluster disimilarity in decision to merge or not to merge
+minClusterDisimilarity :: Double
+minClusterDisimilarity = 0.9
+
 -- |Merge clusters with too small a disimilarity, fill up empty spots with empty
 -- lists.
 mergeClusters :: Model -> [Cluster] -> [Cluster]
 mergeClusters mdl clusters =
-    let
-      mergeList = dropOverlappingPairs (mergeCandidates mdl clusters)
-    in
-      workOffMergeList clusters mergeList
+    let mergeList = dropOverlappingPairs (mergeCandidates mdl clusters)
+    in  workOffMergeList clusters mergeList
 
 -- |Merge clusters in given list, don't touch any overlapping pairs, replace
 -- second cluster of a merge pair with an empty cluster.
@@ -247,24 +253,25 @@ workOffMergeList clusters (x:xs) =
 mergeCandidates :: Model -> [Cluster] -> [(Int, Int)]
 mergeCandidates mdl clusters =
     let
-      ds = map (clusterDisims' mdl clusters) clusters
-      mcs = map mergeCandidate ds
-      pairs = zip [0..] mcs
+      ds     = map (clusterDisims' mdl clusters) clusters
+      mcs    = map mergeCandidate ds
+      pairs  = zip [0..] mcs
       pairs' = filter (isJust . snd) pairs
     in
       map (\(x, Just y) -> (x, y)) pairs'
 
--- |Index of first cluster with 0.0 < disimilarity < 0.9.
+-- |Index of first cluster with 0.0 < disimilarity < minClusterDisimilarity.
 mergeCandidate :: [Maybe Double] -> Maybe Int
 mergeCandidate =
-    L.findIndex (\d -> isJust d && fromJust d > 0.0 && fromJust d < 0.9)
+    L.findIndex (\d -> isJust d &&
+      fromJust d > 0.0 && fromJust d < minClusterDisimilarity)
 
 -- |Indexes of Clusters with too small a similarity.
-splitCandidates :: Model -> [[SpacePnt]] -> [Int]
+splitCandidates :: Model -> [Cluster] -> [Int]
 splitCandidates mdl clusters =
     let sims = map (clusterSim mdl) clusters
     in  [i | i <- [0..(length sims - 1)], let s = sims !! i, isJust s,
-          fromJust s < 0.1]
+          fromJust s < minClusterSimilarity]
 
 -- |Split clusters with too small a similarity into two halves.
 splitClusters :: Model -> [Cluster] -> [Cluster]
