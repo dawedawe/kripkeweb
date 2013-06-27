@@ -13,7 +13,7 @@ module WebSpider
 import Control.Arrow ((&&&))
 import Data.Char (isDigit)
 import Data.Foldable (foldlM)
-import Data.List (group, isPrefixOf, isSuffixOf, nub, sort)
+import Data.List (group, intersect, isPrefixOf, isSuffixOf, nub, sort)
 import Data.List.Utils (replace)
 import Data.Maybe (isJust, fromJust)
 import qualified Data.Set as S
@@ -350,7 +350,8 @@ tld2StemAlgo url
 -- |Filter 2 <= length <= 80 and hasLetters.
 filterFormulas :: [String] -> [String]
 filterFormulas =
-    filter (\x -> hasOkLength x && hasLetters x && isNoStopWord x && isNoTag x)
+    filter (\x -> hasOkLength x && hasLetters x && isNoStopWord x &&
+      isAcceptableWord x)
 
 -- |True if length between 2 and 80 inclusive.
 hasOkLength :: String -> Bool
@@ -362,10 +363,9 @@ hasOkLength s =
 isNoStopWord :: String -> Bool
 isNoStopWord s = s `notElem` stopWords
 
--- |True if string doesn't start with < or end with >
-isNoTag :: String -> Bool
-isNoTag ""     = True
-isNoTag (x:xs) = x /= '<' || last xs /= '>'
+-- |True if string doesn't contains badChars
+isAcceptableWord :: String -> Bool
+isAcceptableWord s = s `intersect` badChars == [] 
 
 -- |List of StopWords of different languages.
 stopWords :: [String]
@@ -374,18 +374,85 @@ stopWords = gerStopWords ++ engStopWords
 -- |List of german StopWords.
 gerStopWords :: [String]
 gerStopWords =
-    ["aber", "als", "am", "an", "auch", "auf", "aus", "bei", "da", "der", "die",
-     "das", "dass", "damit", "dem", "den", "des", "denn", "diese", "diesem",
-     "diesen", "dieser", "dieses", "du", "durch", "ein", "eine", "einem",
-     "einen", "eines", "es", "für", "ihr", "im", "in", "ist", "mit", "sich",
-     "sie", "sind", "um", "und", "uns", "vom", "von", "vor", "was", "wie",
-     "wir", "wo", "zu", "zum", "zur", "über"]
+    ["ab", "aber", "alle", "allem", "allen", "alles", "als", "also", "am",
+     "an", "andere", "anderem", "anderer", "anderes", "anders", "ans", "auch",
+     "auf", "aufs", "aus", "ausser", "ausserdem", "bei", "beide", "beiden",
+     "beides", "beim", "bereits", "bestehen", "besteht", "bevor", "bin", "bis",
+     "bloss", "brauchen", "braucht", "bzw", "da", "dabei", "dadurch", "dafür",
+     "dagegen", "daher", "damit", "danach", "dann", "dar", "daran", "darauf",
+     "darf", "darum", "darunter", "darüber", "das", "dass", "davon", "dazu",
+     "dein", "dem", "demnach", "den", "denen", "denn", "dennoch", "der",
+     "deren", "des", "deshalb", "dessen", "dich", "die", "dies", "diese",
+     "dieselbte", "diesem", "diesen", "dieser", "dieses", "diesmal", "dir",
+     "doch", "dort", "du", "durch", "durfte", "durften", "dürfen", "ebenfalls",
+     "ebenso", "eigene", "eigenem", "eigenen", "eigener", "eigenes", "ein",
+     "eine", "einem", "einen", "einer", "eines", "einige", "einiges", "einmal",
+     "einzelne", "einzelnen", "einzig", "entweder", "er", "erst", "erste",
+     "ersten", "es", "etwa", "etwas", "euch", "falls", "fast", "ferner",
+     "folgender", "folglich", "für", "ganz", "ganze", "gar", "geben", "gegen",
+     "gehabt", "gekonnt", "gemäss", "getan", "gewesen", "gewollt", "geworden",
+     "gibt", "hab", "habe", "haben", "hallo", "hat", "hatte", "hatten",
+     "heraus", "herein", "hier", "hin", "hinaus", "hinein", "hinter", "hinzu",
+     "hätte", "hätten", "ich", "ihm", "ihn", "ihnen", "ihr", "ihre", "ihrem",
+     "ihren", "ihrer", "ihres", "im", "immer", "in", "indem", "infolge",
+     "innen", "innerhalb", "ins", "inzwischen", "irgend", "irgendwas",
+     "irgendwen", "irgendwer", "irgendwie", "irgendwo", "ist", "jede", "jedem",
+     "jeden", "jeder", "jederzeit", "jedes", "jedoch", "jene", "jenem", "jenen",
+     "jener", "jenes", "jeweiligen", "jeweils", "kann", "kein", "keine",
+     "keinem", "keinen", "keiner", "keines", "kommen", "kommt", "konnte",
+     "konnten", "können", "könnte", "könnten", "lassen", "leer", "machen",
+     "macht", "machte", "machten", "man", "mehr", "mein", "meine", "meinem",
+     "meinen", "meiner", "meist", "meiste", "meisten", "mich", "mit", "muss",
+     "musste", "mussten", "möchte", "möchten", "müssen", "müssten", "nach",
+     "nachdem", "nacher", "neben", "nein", "nicht", "nichts", "noch", "nun",
+     "nur", "nämlich", "ob", "obgleich", "obwohl", "oder", "ohne", "schon",
+     "sehr", "seid", "sein", "seine", "seinem", "seinen", "seiner", "seines",
+     "seit", "seitdem", "seither", "selber", "selbst", "sich", "sie", "siehe",
+     "sind", "so", "sobald", "sofern", "sofort", "sogar", "solange", "solch",
+     "solche", "solchem", "solchen", "solcher", "solches", "soll", "sollen",
+     "sollte", "sollten", "somit", "sondern", "sonst", "sonstiges", "soweit",
+     "sowie", "sowohl", "statt", "stets", "such", "u.v.m.", "um", "ums", "und",
+     "uns", "unser", "unsere", "unserem", "unseren", "unserer", "unter", "viel",
+     "viele", "vielen", "vieler", "vom", "von", "vor", "vorbei", "vorher",
+     "vorüber", "wann", "war", "waren", "warum", "was", "weg", "wegen", "weil",
+     "weit", "weiter", "weitere", "weiterem", "weiteren", "weiterer",
+     "weiteres", "weiterhin", "welche", "welchem", "welchen", "welcher",
+     "welches", "wem", "wen", "wenigstens", "wenn", "wenngleich", "wer",
+     "werde", "werden", "weshalb", "wessen", "wie", "wieder", "will", "wir",
+     "wird", "wo", "wodurch", "wohin", "wollen", "wollte", "wollten", "worin",
+     "wurde", "wurden", "während", "wäre", "wären", "würde", "würden", "z.b",
+     "zeigen", "zeigt", "zu", "zudem", "zufolge", "zum", "zur", "zurück",
+     "zusammen", "zwar", "zwischen", "zzgl", "über"]
 
 -- |List of english StopWords.
 engStopWords :: [String]
 engStopWords =
-    ["and", "at", "be", "by", "for", "from", "is", "it", "more", "of", "on",
-     "the", "that", "to", "we", "where", "with", "you", "your", "'ll", "'s"]
+    ["'ll", "'s", "'ve", "about", "above", "after", "again", "against", "all",
+     "am", "an", "and", "any", "are", "aren't", "as", "at", "be", "because",
+     "been", "before", "being", "below", "between", "both", "but", "by", "can",
+     "can't", "cannot", "could", "couldn't", "did", "didn't", "do", "does",
+     "doesn't", "doing", "don't", "down", "during", "each", "few", "for",
+     "from", "further", "get", "had", "hadn't", "has", "hasn't", "have",
+     "haven't", "having", "he", "he'd", "he'll", "he's", "her", "here",
+     "here's", "hers", "herself", "him", "himself", "his", "how", "how's",
+     "i'd", "i'll", "i'm", "i've", "if", "in", "into", "is", "isn't", "it",
+     "it's", "its", "itself", "let's", "me", "more", "most", "mustn't", "my",
+     "myself", "no", "none", "nor", "not", "of", "off", "on", "once", "only",
+     "or", "other", "ought", "our", "ours ", "ourselves", "out", "over", "own",
+     "same", "shan't", "she", "she'd", "she'll", "she's", "should", "shouldn't",
+     "so", "some", "such", "than", "that", "that's", "the", "their", "theirs",
+     "them", "themselves", "then", "there", "there's", "these", "they",
+     "they'd", "they'll", "they're", "they've", "this", "those", "through",
+     "to", "too", "under", "until", "up", "very", "want", "was", "wasn't", "we",
+     "we'd", "we'll", "we're", "we've", "were", "weren't", "what", "what's",
+     "when", "when's", "where", "where's", "which", "while", "who", "who's",
+     "whom", "why", "why's", "with", "won't", "would", "wouldn't", "you",
+     "you'd", "you'll", "you're", "you've", "your", "yours", "yourself",
+     "yourselves"]
+
+-- |List of characters a lambda formula word is not allowed to contain.
+badChars :: String
+badChars = "#$%()*,0123456789:;<>@[]{|}§"
 
 -- |Filter out <script>...</script> parts.
 filterScript :: [Tag String] -> [Tag String]
