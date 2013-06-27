@@ -15,6 +15,7 @@ import System.Random
 import DB
 import KripkeTypes
 import LogicSearch
+import Tfidf
 import Util
 
 data SpacePnt = SpacePnt { name     :: T.Text
@@ -41,7 +42,8 @@ fmlSpacePos mdl fmls w = SpacePnt w (map (isPTrueInWorld mdl w) fmls)
 boolsDist :: [Bool] -> [Bool] -> Double
 boolsDist x y
     | length x == length y = sqrt (fromIntegral (sum (zipWith boolDist x y)))
-    | otherwise            = error "boolsDist: uneven lists"
+    | otherwise            =
+        error ("boolsDist: uneven lists: " ++ show x ++ " " ++ show y)
 
 -- |Distance of two Bools.
 boolDist :: Bool -> Bool -> Int
@@ -132,6 +134,41 @@ kMeansLoop clusters centroids k j = do
       then kMeansLoop clusters' centroids'' k (pred j)
       else zip centroids'' clusters'
 
+-- |kMeans implementation for a boolean n dimensional space.
+dynkMeans :: (AsLambdaType f, PTrueIn f) => Model -> [f] -> Int ->
+          IO [([Bool], Cluster)]
+dynkMeans mdl@(Model (Frame w _) _) fmls k = do
+    let dim    = length fmls
+    let wPoses = fmlSpacePoses mdl fmls (S.toList w)
+    centroids  <- randomCentroids dim k 20
+    let hOfx   = map (closestCentroidIdx centroids) wPoses
+    let wk     = zip wPoses hOfx
+    let clusters =
+          filter (not . null)
+          [map fst c | i <- [0..(k - 1)], let c = filter ((== i) . snd) wk]
+    return (dynkMeansLoop mdl clusters centroids 10)
+
+-- |Looping function for kMeans, ends when centroids stop moving or after i
+-- loops.
+dynkMeansLoop :: Model -> [Cluster] -> [[Bool]] -> Int -> [([Bool], Cluster)]
+dynkMeansLoop _   clusters centroids 0 = zip centroids clusters
+dynkMeansLoop mdl clusters centroids j = do
+    let k          = length clusters
+    let hOfx       = map (closestCentroidIdx centroids) (concat clusters)
+    let wk         = zip (concat clusters) hOfx     -- [(world, k_index)]
+    let clusters'  =
+          filter (not . null)
+          [map fst c | i <- [0..(k - 1)], let c = filter ((== i) . snd) wk]
+    -- split if needed
+    let clustersSp = splitClusters mdl clusters'
+    -- merge if needed
+    let clustersMg = mergeClusters mdl clustersSp
+    -- new centroids
+    let centroids' = map (sumBoolLists . map position) clustersMg
+    if centroids' /= centroids
+      then dynkMeansLoop mdl clustersMg centroids' (pred j)
+      else zip centroids' clustersMg
+
 -- |Determine the index number of the closes centroid.
 closestCentroidIdx :: [[Bool]] -> SpacePnt -> Int
 closestCentroidIdx cs (SpacePnt _ pos) =
@@ -145,7 +182,8 @@ closestCentroidIdx cs (SpacePnt _ pos) =
 -- second list is null.
 keepCentroidsOfEmptyClusters :: [[a]] -> [[a]] -> [[a]]
 keepCentroidsOfEmptyClusters os ns
-    | length os /= length ns = error "keepEmptyClustCents: uneven lists"
+    | length os /= length ns =
+        error "keepCentroidsOfEmptyClusters: uneven lists"
     | otherwise              =
         map (\(o, n) -> if null n then o else n) (zip os ns)
 
@@ -222,29 +260,29 @@ avgClusterDisim mdl clusters
 
 -- |Lowest acceptable cluster similarity in decision to split or not to split
 minClusterSimilarity :: Double
-minClusterSimilarity = 0.1
+minClusterSimilarity = 0.2
 
 -- |Lowest acceptable cluster disimilarity in decision to merge or not to merge
 minClusterDisimilarity :: Double
-minClusterDisimilarity = 0.9
+minClusterDisimilarity = 0.7
 
 -- |Merge clusters with too small a disimilarity, fill up empty spots with empty
--- lists.
+-- lists to maintain the index information, then delete the empty lists.
 mergeClusters :: Model -> [Cluster] -> [Cluster]
 mergeClusters mdl clusters =
     let mergeList = dropOverlappingPairs (mergeCandidates mdl clusters)
     in  workOffMergeList clusters mergeList
 
--- |Merge clusters in given list, don't touch any overlapping pairs, replace
--- second cluster of a merge pair with an empty cluster.
+-- |Merge clusters in given list, don't touch any overlapping pairs.
+-- Use index of first half for the merger, delete second half after merge.
 workOffMergeList :: [Cluster] -> [(Int, Int)] -> [Cluster]
-workOffMergeList clusters []     = clusters
+workOffMergeList clusters []     = filter (not . null) clusters
 workOffMergeList clusters (x:xs) =
     let
         c1  = clusters !! fst x
         c2  = clusters !! snd x
-        cm  = c1 ++ c2
-        c'  = LU.replace [c1] [cm] clusters
+        c12 = c1 ++ c2
+        c'  = LU.replace [c1] [c12] clusters
         c'' = LU.replace [c2] [[]] c'
     in
       workOffMergeList c'' xs
