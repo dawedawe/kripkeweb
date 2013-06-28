@@ -46,18 +46,30 @@ module DB
 , worldsWithOLinksSubsetOf
 ) where
 
+import qualified Blaze.ByteString.Builder.Char.Utf8 as Utf8
+import Blaze.ByteString.Builder (fromByteString)
+import qualified Data.ByteString as BS
 import Control.Monad (liftM, when)
+import Data.Monoid
 import qualified Data.List as L
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Database.PostgreSQL.Simple
+import Database.PostgreSQL.Simple.ToField
 import GHC.Int
 import NLP.Snowball
 
 import KripkeTypes
 import Util
+
+-- see: https://github.com/lpsmith/postgresql-simple/issues/65
+newtype TableName = TableName BS.ByteString 
+
+instance ToField TableName where
+    toField (TableName xs) = Plain (quote <> fromByteString xs <> quote)
+       where quote = Utf8.fromChar '"'
 
 myConn :: ConnectInfo
 myConn = ConnectInfo "localhost" 5432 "saul" "13_kripke_13" "kripkeweb"
@@ -148,13 +160,14 @@ pathsToViaLambda' c lamType visited path = do
              let ps = [path ++ [s] | s <- sOf]
              liftM concat (mapM (pathsToViaLambda' c lamType v') ps)
 
--- |Insert OneToN into on of the lambda tables.
+-- |Insert OneToN into one of the lambda tables.
 insertLambdaRelation :: Connection -> LambdaType -> OneToNtuples -> IO () 
 insertLambdaRelation c lamType otnt = do
     let
       w      = dEntity otnt
       ottlst = oToNtuples2LambdaEntry otnt
       ottlln = fromIntegral (Prelude.length ottlst)
+      -- executeMany can't work with a ? in place of the table name:
       mRawq   = "INSERT INTO lambda_m        (world, formula, frmcount) \
                \VALUES (?,?,?)"
       mStemq  = "INSERT INTO lambda_mstems   (world, formula, frmcount) \
@@ -167,10 +180,14 @@ insertLambdaRelation c lamType otnt = do
                \VALUES (?,?,?)"
       bSndexq = "INSERT INTO lambda_soundex  (world, formula, frmcount) \
                \VALUES (?,?,?)"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
-    rs <- executeMany c q ottlst
+      q       = case lamType of
+                  MtaRaw     -> mRawq
+                  MtaStem    -> mStemq
+                  MtaSoundex -> mSndexq
+                  BdyRaw     -> bRawq
+                  BdyStem    -> bStemq
+                  BdySoundex -> bSndexq
+    rs <- executeMany c q ottlst    
     putStrLn ("insertLambdaRelation " ++ show w ++ " " ++ show lamType ++
       " " ++ show rs)
     when (rs /= ottlln) $
@@ -180,40 +197,19 @@ insertLambdaRelation c lamType otnt = do
 -- |Update the frmcount field in a lambda Entry
 updateFmlCount :: Connection -> LambdaType -> LambdaEntry -> IO ()
 updateFmlCount c lamType (LambdaEntry w f cnt) = do
-    let
-      mRawq   = "UPDATE lambda_m        SET frmcount = ? \
-               \WHERE world = ? AND formula = ?"
-      mStemq  = "UPDATE lambda_mstems   SET frmcount = ? \
-               \WHERE world = ? AND formula = ?"
-      mSndexq = "UPDATE lambda_msoundex SET frmcount = ? \
-               \WHERE world = ? AND formula = ?"
-      bRawq   = "UPDATE lambda          SET frmcount = ? \
-               \WHERE world = ? AND formula = ?"
-      bStemq  = "UPDATE lambda_stems    SET frmcount = ? \
-               \WHERE world = ? AND formula = ?"
-      bSndexq = "UPDATE lambda_soundex  SET frmcount = ? \
-               \WHERE world = ? AND formula = ?"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
-    rs <- execute c q (cnt, w, f)
+    let q = "UPDATE ? SET frmcount = ? \
+            \WHERE world = ? AND formula = ?"
+    let t = chooseLambdaTable lamType
+    rs    <- execute c q (t, cnt, w, f)
     putStrLn ("updateFrmCount " ++ show lamType ++ " " ++ show rs)
     when (rs /= 1) $ error ("updateFrmCount: result = " ++ show rs)
 
 -- |Delete all entries of the world in the specified lambda table.
 deleteLambdaWorld :: Connection -> LambdaType -> T.Text -> IO ()
 deleteLambdaWorld c lamType w = do
-    let
-      mRawq   = "DELETE FROM lambda_m        WHERE world = ?"
-      mStemq  = "DELETE FROM lambda_mstems   WHERE world = ?"
-      mSndexq = "DELETE FROM lambda_msoundex WHERE world = ?"
-      bRawq   = "DELETE FROM lambda          WHERE world = ?"
-      bStemq  = "DELETE FROM lambda_stems    WHERE world = ?"
-      bSndexq = "DELETE FROM lambda_soundex  WHERE world = ?"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
-    rs <- execute c q (Only w)
+    let q = "DELETE FROM ? WHERE world = ?"
+    let t = chooseLambdaTable lamType
+    rs    <- execute c q (t, w)
     when (rs == 0) $ error ("no entries deleted for " ++ show w)
     putStrLn ("deleteLambdaWorld " ++ show w)
 
@@ -221,87 +217,47 @@ deleteLambdaWorld c lamType w = do
 worldFormulas :: Connection -> LambdaType -> T.Text -> IO [T.Text]
 worldFormulas c lamType w =
     let
-      mRawq   = "SELECT formula FROM lambda_m        WHERE world = ?"
-      mStemq  = "SELECT formula FROM lambda_mstems   WHERE world = ?"
-      mSndexq = "SELECT formula FROM lambda_msoundex WHERE world = ?"
-      bRawq   = "SELECT formula FROM lambda          WHERE world = ?"
-      bStemq  = "SELECT formula FROM lambda_stems    WHERE world = ?"
-      bSndexq = "SELECT formula FROM lambda_soundex  WHERE world = ?"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
+      q = "SELECT formula FROM ? WHERE world = ?"
+      t = chooseLambdaTable lamType
     in
-      liftM (map fromOnly) (query c q (Only w))
+      liftM (map fromOnly) (query c q (t, w))
 
 -- |The (formula, count) tuples of a world in lambda.
 worldFmlsAndCounts :: Connection -> LambdaType -> T.Text -> IO [(T.Text, Int)]
 worldFmlsAndCounts c lamType w =
     let
-      mRawq   = "SELECT formula, frmcount FROM lambda_m        WHERE world = ?"
-      mStemq  = "SELECT formula, frmcount FROM lambda_mstems   WHERE world = ?"
-      mSndexq = "SELECT formula, frmcount FROM lambda_msoundex WHERE world = ?"
-      bRawq   = "SELECT formula, frmcount FROM lambda          WHERE world = ?"
-      bStemq  = "SELECT formula, frmcount FROM lambda_stems    WHERE world = ?"
-      bSndexq = "SELECT formula, frmcount FROM lambda_soundex  WHERE world = ?"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
+      q = "SELECT formula, frmcount FROM ? WHERE world = ?"
+      t = chooseLambdaTable lamType
     in
-      query c q (Only w)
+      query c q (t, w)
 
 -- |Count of the given formula in the given world.
 termFrequency :: Connection -> LambdaType -> T.Text -> T.Text -> IO Int
 termFrequency c lamType w f = do
-    let
-      mRawq   = "SELECT frmcount FROM lambda_m \
-                \WHERE world = ? AND formula = ?"
-      mStemq  = "SELECT frmcount FROM lambda_mstems \
-                \WHERE world = ? AND formula = ?"
-      mSndexq = "SELECT frmcount FROM lambda_msoundex \
-                \WHERE world = ? AND formula = ?"
-      bRawq   = "SELECT frmcount FROM lambda \
-                \WHERE world = ? AND formula = ?"
-      bStemq  = "SELECT frmcount FROM lambda_stems \
-                \WHERE world = ? AND formula = ?"
-      bSndexq = "SELECT frmcount FROM lambda_soundex \
-                \WHERE world = ? AND formula = ?"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
-    rs <- query c q [w,f]
-    if null rs then return 0 else return (fromOnly (head rs))
+    let q = "SELECT frmcount FROM ? WHERE world = ? AND formula = ?"
+    let t = chooseLambdaTable lamType
+    rs    <- query c q (t, w, f)
+    if null rs
+      then return 0
+      else return (fromOnly (head rs))
 
 -- |Count of worlds containing the given formula.
 documentFrequency :: Connection -> LambdaType -> T.Text -> IO Int
 documentFrequency c lamType f =
     let
-      mRawq   = "SELECT count(*) FROM lambda_m        WHERE formula = ?"
-      mStemq  = "SELECT count(*) FROM lambda_mstems   WHERE formula = ?"
-      mSndexq = "SELECT count(*) FROM lambda_msoundex WHERE formula = ?"
-      bRawq   = "SELECT count(*) FROM lambda          WHERE formula = ?"
-      bStemq  = "SELECT count(*) FROM lambda_stems    WHERE formula = ?"
-      bSndexq = "SELECT count(*) FROM lambda_soundex  WHERE formula = ?"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
+      q = "SELECT count(*) FROM ? WHERE formula = ?"
+      t = chooseLambdaTable lamType
     in
-      liftM (fromOnly . head) $ query c q (Only f)
+      liftM (fromOnly . head) (query c q (t, f))
 
 -- |Count of worlds in the lambda table.
 worldCountInLambda :: Connection -> LambdaType -> IO Int
 worldCountInLambda c lamType =
     let
-      mRawq   = "SELECT count(DISTINCT world) FROM lambda_m"
-      mStemq  = "SELECT count(DISTINCT world) FROM lambda_mstems"
-      mSndexq = "SELECT count(DISTINCT world) FROM lambda_msoundex"
-      bRawq   = "SELECT count(DISTINCT world) FROM lambda"
-      bStemq  = "SELECT count(DISTINCT world) FROM lambda_stems"
-      bSndexq = "SELECT count(DISTINCT world) FROM lambda_soundex"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
+      q = "SELECT count(DISTINCT world) FROM ?"
+      t = chooseLambdaTable lamType
     in
-      liftM (fromOnly . head) $ query_ c q
+      liftM (fromOnly . head) (query c q (Only t))
 
 -- |Insert the stemming language of a world.
 insertStemLang :: Connection -> T.Text -> Maybe Algorithm -> IO ()
@@ -329,77 +285,40 @@ stemLang c w = do
 worldsWithFormula :: Connection -> LambdaType -> T.Text -> IO [T.Text]
 worldsWithFormula c lamType f =
     let
-      mRawq   = "SELECT world FROM lambda_m        WHERE formula = ?"
-      mStemq  = "SELECT world FROM lambda_mstems   WHERE formula = ?"
-      mSndexq = "SELECT world FROM lambda_msoundex WHERE formula = ?"
-      bRawq   = "SELECT world FROM lambda          WHERE formula = ?"
-      bStemq  = "SELECT world FROM lambda_stems    WHERE formula = ?"
-      bSndexq = "SELECT world FROM lambda_soundex  WHERE formula = ?"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
+      q = "SELECT world FROM ? WHERE formula = ?"
+      t = chooseLambdaTable lamType
     in
-      liftM (map fromOnly) (query c q (Only f))
+      liftM (map fromOnly) (query c q (t, f))
 
 -- |Worlds whose lambda intersected with the given world's lambda isn't empty.
 worldsWithIntersectingLambda :: Connection -> LambdaType -> [T.Text] ->
                                 T.Text -> IO [T.Text]
 worldsWithIntersectingLambda c lamType v w =
     let
-      mRawq   = "SELECT DISTINCT world FROM lambda_m \
-                \WHERE world NOT IN ? AND formula IN \
-                  \(SELECT formula FROM lambda_m WHERE world = ?)"
-      mStemq  = "SELECT DISTINCT world FROM lambda_mstems \
-                \WHERE world NOT IN ? AND formula IN \
-                  \(SELECT formula FROM lambda_mstems WHERE world = ?)"
-      mSndexq = "SELECT DISTINCT world FROM lambda_msoundex \
-                \WHERE world NOT IN ? AND formula IN \
-                  \(SELECT formula FROM lambda_msoundex WHERE world = ?)"
-      bRawq   = "SELECT DISTINCT world FROM lambda \
-                \WHERE world NOT IN ? AND formula IN \
-                  \(SELECT formula FROM lambda WHERE world = ?)"
-      bStemq  = "SELECT DISTINCT world FROM lambda_stems \
-                \WHERE world NOT IN ? AND formula IN \
-                  \(SELECT formula FROM lambda_stems WHERE world = ?)"
-      bSndexq = "SELECT DISTINCT world FROM lambda_soundex \
-                \WHERE world NOT IN ? AND formula IN \
-                  \(SELECT formula FROM lambda_soundex WHERE world = ?)"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
+      q = "SELECT DISTINCT world FROM ? \
+          \WHERE world NOT IN ? AND formula IN \
+          \(SELECT formula FROM ? WHERE world = ?)"
+      t = chooseLambdaTable lamType
     in
-      liftM (map fromOnly) (query c q (In v, w))
+      liftM (map fromOnly) (query c q (t, In v, t, w))
 
 -- |Query all worlds in the lambda or lambda_stems table.
 worldsInLambda :: Connection -> LambdaType -> IO [T.Text]
 worldsInLambda c lamType =
     let
-      mRawq   = "SELECT DISTINCT world FROM lambda_m"
-      mStemq  = "SELECT DISTINCT world FROM lambda_mstems"
-      mSndexq = "SELECT DISTINCT world FROM lambda_msoundex"
-      bRawq   = "SELECT DISTINCT world FROM lambda"
-      bStemq  = "SELECT DISTINCT world FROM lambda_stems"
-      bSndexq = "SELECT DISTINCT world FROM lambda_soundex"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
-    in  liftM (map fromOnly) (query_ c q)
+      q = "SELECT DISTINCT world FROM ?"
+      t = chooseLambdaTable lamType
+    in
+      liftM (map fromOnly) (query c q (Only t))
 
 -- |Query all formulas in the lambda table.
 formulasInLambda :: Connection -> LambdaType -> IO [T.Text]
 formulasInLambda c lamType =
     let
-      mRawq   = "SELECT DISTINCT formula FROM lambda_m"
-      mStemq  = "SELECT DISTINCT formula FROM lambda_mstems"
-      mSndexq = "SELECT DISTINCT formula FROM lambda_msoundex"
-      bRawq   = "SELECT DISTINCT formula FROM lambda"
-      bStemq  = "SELECT DISTINCT formula FROM lambda_stems"
-      bSndexq = "SELECT DISTINCT formula FROM lambda_soundex"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
+      q = "SELECT DISTINCT formula FROM ?"
+      t = chooseLambdaTable lamType
     in
-      liftM (map fromOnly) (query_ c q)
+      liftM (map fromOnly) (query c q (Only t))
 
 -- |outlink count and pagerank score of source worlds for a world.
 outLinkCountAndPageRankofSources :: Connection -> T.Text ->
@@ -429,29 +348,12 @@ updatePageRank c w s =
 worldsWithFmlSetSubsetOf :: Connection -> LambdaType -> [T.Text] -> IO [T.Text]
 worldsWithFmlSetSubsetOf c lamType l =
     let
-      mRawq   = "SELECT world FROM lambda_m        WHERE formula IN ? \
-                \EXCEPT \
-                \SELECT world FROM lambda_m        WHERE formula NOT IN ?"
-      mStemq  = "SELECT world FROM lambda_mstems   WHERE formula IN ? \
-                \EXCEPT \
-                \SELECT world FROM lambda_mstems   WHERE formula NOT IN ?"
-      mSndexq = "SELECT world FROM lambda_msoundex WHERE formula IN ? \
-                \EXCEPT \
-                \SELECT world FROM lambda_msoundex WHERE formula NOT IN ?"
-      bRawq   = "SELECT world FROM lambda          WHERE formula IN ? \
-                \EXCEPT \
-                \SELECT world FROM lambda          WHERE formula NOT IN ?"
-      bStemq  = "SELECT world FROM lambda_stems    WHERE formula IN ? \
-                \EXCEPT \
-                \SELECT world FROM lambda_stems    WHERE formula NOT IN ?"
-      bSndexq = "SELECT world FROM lambda_soundex  WHERE formula IN ? \
-                \EXCEPT \
-                \SELECT world FROM lambda_soundex  WHERE formula NOT IN ?"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
+      q = "SELECT world FROM ? WHERE formula IN ? \
+          \EXCEPT \
+          \SELECT world FROM ? WHERE formula NOT IN ?"
+      t = chooseLambdaTable lamType
     in
-      liftM (map fromOnly) (query c q [In l, In l])
+      liftM (map fromOnly) (query c q (t, In l, t, In l))
 
 -- |Worlds whose formula set has a non-empty intersect with the given formula
 -- set.
@@ -459,17 +361,10 @@ worldsWithFmlSetIntersectWith :: Connection -> LambdaType -> [T.Text] ->
                                  IO [T.Text]
 worldsWithFmlSetIntersectWith c lamType l =
     let
-      mRawq   = "SELECT DISTINCT world FROM lambda_m        WHERE formula IN ?"
-      mStemq  = "SELECT DISTINCT world FROM lambda_mstems   WHERE formula IN ?"
-      mSndexq = "SELECT DISTINCT world FROM lambda_msoundex WHERE formula IN ?"
-      bRawq   = "SELECT DISTINCT world FROM lambda          WHERE formula IN ?"
-      bStemq  = "SELECT DISTINCT world FROM lambda_stems    WHERE formula IN ?"
-      bSndexq = "SELECT DISTINCT world FROM lambda_soundex  WHERE formula IN ?"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
+      q = "SELECT DISTINCT world FROM ? WHERE formula IN ?"
+      t = chooseLambdaTable lamType
     in
-      liftM (map fromOnly) (query c q (Only (In l)))
+      liftM (map fromOnly) (query c q (t, In l))
 
 -- |Worlds whose target set is a subset of the given target set.
 worldsWithOLinksSubsetOf :: Connection -> [T.Text] -> IO [T.Text]
@@ -477,7 +372,7 @@ worldsWithOLinksSubsetOf c l =
     let q = "SELECT source FROM links WHERE target IN ? \
             \EXCEPT \
             \SELECT source FROM links WHERE target NOT IN ?"
-    in  liftM (map fromOnly) (query c q [In l, In l])
+    in  liftM (map fromOnly) (query c q (In l, In l))
 
 -- |Worlds whose source set is a subset of the given source set.
 worldsWithILinksSubsetOf :: Connection -> [T.Text] -> IO [T.Text]
@@ -506,69 +401,24 @@ negateLambaWorlds :: Connection -> LambdaType -> [T.Text] -> IO [T.Text]
 negateLambaWorlds c lamType [] = worldsInLambda c lamType
 negateLambaWorlds c lamType ws =
     let
-      mRawq   = "SELECT DISTINCT world FROM lambda_m \
-                \WHERE world NOT IN ?"
-      mStemq  = "SELECT DISTINCT world FROM lambda_mstems \
-                \WHERE world NOT IN ?"
-      mSndexq = "SELECT DISTINCT world FROM lambda_msoundex \
-                \WHERE world NOT IN ?"
-      bRawq   = "SELECT DISTINCT world FROM lambda \
-                \WHERE world NOT IN ?"
-      bStemq  = "SELECT DISTINCT world FROM lambda_stems \
-                \WHERE world NOT IN ?"
-      bSndexq = "SELECT DISTINCT world FROM lambda_soundex \
-                \WHERE world NOT IN ?"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
+      q = "SELECT DISTINCT world FROM ? WHERE world NOT IN ?"
+      t = chooseLambdaTable lamType
     in
-      liftM (map fromOnly) (query c q (Only (In ws)))
+      liftM (map fromOnly) (query c q (t, In ws))
 
 -- |Accumulations of Lambda formulas with fraction of formula total.
 lambdaAccum :: Connection -> LambdaType -> IO [(T.Text, Int, Double)]
 lambdaAccum c lamType =
     let
-      mRawq   = "SELECT t1.formula, t1.fc, CAST(t1.fc AS REAL) / t2.total \
-                \FROM \
-                \(SELECT formula, sum(frmcount) AS fc FROM lambda_m \
-                \GROUP BY formula) AS t1, \
-                \(SELECT sum(frmcount) AS total FROM lambda_m) AS t2 \
-                \ORDER BY t1.fc DESC"
-      mStemq  = "SELECT t1.formula, t1.fc, CAST(t1.fc AS REAL) / t2.total \
-                \FROM \
-                \(SELECT formula, sum(frmcount) AS fc FROM lambda_mstems \
-                \GROUP BY formula) AS t1, \
-                \(SELECT sum(frmcount) AS total FROM lambda_mstems) AS t2 \
-                \ORDER BY t1.fc DESC"
-      mSndexq = "SELECT t1.formula, t1.fc, CAST(t1.fc AS REAL) / t2.total \
-                \FROM \
-                \(SELECT formula, sum(frmcount) AS fc FROM lambda_msoundex \
-                \GROUP BY formula) AS t1, \
-                \(SELECT sum(frmcount) AS total FROM lambda_msoundex) AS t2 \
-                \ORDER BY t1.fc DESC"
-      bRawq   = "SELECT t1.formula, t1.fc, CAST(t1.fc AS REAL) / t2.total \
-                \FROM \
-                \(SELECT formula, sum(frmcount) AS fc FROM lambda \
-                \GROUP BY formula) AS t1, \
-                \(SELECT sum(frmcount) AS total FROM lambda) AS t2 \
-                \ORDER BY t1.fc DESC"
-      bStemq  = "SELECT t1.formula, t1.fc, CAST(t1.fc AS REAL) / t2.total \
-                \FROM \
-                \(SELECT formula, sum(frmcount) AS fc FROM lambda_stems \
-                \GROUP BY formula) AS t1, \
-                \(SELECT sum(frmcount) AS total FROM lambda_stems) AS t2 \
-                \ORDER BY t1.fc DESC"
-      bSndexq = "SELECT t1.formula, t1.fc, CAST(t1.fc AS REAL) / t2.total \
-                \FROM \
-                \(SELECT formula, sum(frmcount) AS fc FROM lambda_soundex \
-                \GROUP BY formula) AS t1, \
-                \(SELECT sum(frmcount) AS total FROM lambda_soundex) AS t2 \
-                \ORDER BY t1.fc DESC"
-      mp = M.fromList [(MtaRaw,mRawq), (MtaStem,mStemq), (MtaSoundex,mSndexq),
-                       (BdyRaw,bRawq), (BdyStem,bStemq), (BdySoundex,bSndexq)]
-      q = chooseQuery mp lamType
+      q = "SELECT t1.formula, t1.fc, CAST(t1.fc AS REAL) / t2.total \
+          \FROM \
+            \(SELECT formula, sum(frmcount) AS fc FROM ? \
+            \GROUP BY formula) AS t1, \
+            \(SELECT sum(frmcount) AS total FROM ?) AS t2 \
+          \ORDER BY t1.fc DESC"
+      t = chooseLambdaTable lamType
     in
-      query_ c q
+      query c q (t, t)
  
 --------------------------------------------------------------------------------
 -- functions for subsets with certain relation properties
@@ -666,6 +516,7 @@ linkCountAmongWorlds c ws =
             \WHERE source IN ? AND target IN ?"
     in  liftM (fromOnly . head) $ query c q (In ws, In ws)
 
+-- |Crossing links between two sets of worlds.
 linkCountBetweenWorldSets :: Connection -> [T.Text] -> [T.Text] -> IO Int
 linkCountBetweenWorldSets c ws1 ws2 =
     let q = "SELECT count(*) FROM links \
@@ -673,7 +524,14 @@ linkCountBetweenWorldSets c ws1 ws2 =
             \OR source IN ? AND target In ?"
     in  liftM (fromOnly . head) $ query c q (In ws1, In ws2, In ws2, In ws1)
 
-chooseQuery :: M.Map LambdaType Query -> LambdaType -> Query
-chooseQuery mp lamType =
-    let v = M.lookup lamType mp
-    in  fromMaybe (error "no query for LambdaType in Map") v
+-- |Choose the lambda-table name according to the given LambdaType.
+chooseLambdaTable :: LambdaType -> TableName
+chooseLambdaTable lamType =
+    case lamType of
+      MtaRaw     -> TableName ("lambda_m"        :: BS.ByteString)
+      MtaStem    -> TableName ("lambda_mstems"   :: BS.ByteString)
+      MtaSoundex -> TableName ("lambda_msoundex" :: BS.ByteString)
+      BdyRaw     -> TableName ("lambda"          :: BS.ByteString)
+      BdyStem    -> TableName ("lambda_stems"    :: BS.ByteString)
+      BdySoundex -> TableName ("lambda_soundex"  :: BS.ByteString)
+
