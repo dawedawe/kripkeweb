@@ -304,10 +304,19 @@ parseMeta tgs =
     in
       (nub . filterFormulas . map lowerString . concatMap tokenize) metaWords
 
--- |Get the content ouf of the first tag in the given list if it's there.
+-- |Get the content attribute value ouf of the first tag in the given list if
+-- it's there.
 getTagContent :: [Tag String] -> String
 getTagContent []    = ""
 getTagContent (x:_) = fromAttrib "content" x
+
+-- |Parse the webpage title ouf of the <title> tag.
+parseTitle :: [Tag String] -> Maybe String
+parseTitle tgs =
+    let tTag  = sections (~== ("<title>" :: String)) tgs
+    in  if tTag /= []
+          then maybeTagText ((tTag !! 0) !! 1)
+          else Nothing 
 
 -- |HTML lang attribute to Snowball stemming Algorithm.
 langAttr2StemAlgo :: String -> Maybe Algorithm
