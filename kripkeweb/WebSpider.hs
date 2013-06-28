@@ -13,7 +13,7 @@ module WebSpider
 import Control.Arrow ((&&&))
 import Data.Char (isDigit)
 import Data.Foldable (foldlM)
-import Data.List (group, intersect, isPrefixOf, isSuffixOf, nub, sort)
+import Data.List (group, intersect, isPrefixOf, isSuffixOf, sort)
 import Data.List.Utils (replace)
 import Data.Maybe (isJust, fromJust)
 import qualified Data.Set as S
@@ -302,7 +302,7 @@ parseMeta tgs =
       keyw      = getTagContent keywTags
       metaWords = words (replace "," " " (desc ++ " " ++ keyw))
     in
-      (nub . filterFormulas . map lowerString . concatMap tokenize) metaWords
+      (filterFormulas . map lowerString . concatMap tokenize) metaWords
 
 -- |Get the content attribute value ouf of the first tag in the given list if
 -- it's there.
@@ -315,7 +315,7 @@ parseTitle :: [Tag String] -> Maybe String
 parseTitle tgs =
     let tTag  = sections (~== ("<title>" :: String)) tgs
     in  if tTag /= []
-          then maybeTagText ((tTag !! 0) !! 1)
+          then maybeTagText (head tTag !! 1)
           else Nothing 
 
 -- |HTML lang attribute to Snowball stemming Algorithm.
