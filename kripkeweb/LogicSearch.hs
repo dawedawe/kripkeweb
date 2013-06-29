@@ -428,7 +428,7 @@ parseMLFml' s =
                                 in  MLImp (parseMLFml p) (parseMLFml q)
       '(':'[':']':xs         -> Box (parseMLFml xs)
       '(':'<':'>':xs         -> Diamond (parseMLFml xs)
-      _                      -> error "parseFml: malformed expression"
+      _                      -> error "parseMLFml: malformed expression"
 
 -- |True if String has an equal number of opening and closing parentheses
 balancedParentheses :: String -> Bool
