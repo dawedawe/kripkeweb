@@ -15,7 +15,7 @@ import Data.Char (isDigit)
 import Data.Foldable (foldlM)
 import Data.List (group, intersect, isPrefixOf, isSuffixOf, sort)
 import Data.List.Utils (replace)
-import Data.Maybe (isJust, fromJust)
+import Data.Maybe (isJust, fromJust, mapMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T (Text, append, init, isSuffixOf, pack, unpack)
 import Network.Curl.Opts
@@ -318,6 +318,28 @@ parseTitle tgs =
           then maybeTagText (head tTag !! 1)
           else Nothing 
 
+-- |Parse and postprocess data out of hx tags.
+parseHeadlines :: [Tag String] -> [String]
+parseHeadlines tgs =
+    let
+      h1s = mapMaybe (parseHx "h1") (sections (~== ("<h1>" :: String)) tgs)
+      h2s = mapMaybe (parseHx "h2") (sections (~== ("<h2>" :: String)) tgs)
+      h3s = mapMaybe (parseHx "h3") (sections (~== ("<h3>" :: String)) tgs)
+      h4s = mapMaybe (parseHx "h4") (sections (~== ("<h4>" :: String)) tgs)
+      hxs = concat [h1s, h2s, h3s, h4s]
+    in
+      (filterFormulas . map lowerString . concatMap tokenize) hxs
+
+-- |Parse a single hx section.
+parseHx :: String -> [Tag String] -> Maybe String
+parseHx hx tgs =
+    let
+      tgs' = dropWhile (not . isTagText) (takeWhile (/= TagClose hx) tgs)
+    in
+      case tgs' of
+        TagText txt : _ -> Just txt
+        _               -> Nothing
+
 -- |HTML lang attribute to Snowball stemming Algorithm.
 langAttr2StemAlgo :: String -> Maybe Algorithm
 langAttr2StemAlgo lng =
@@ -356,7 +378,7 @@ tld2StemAlgo url
     | ".tr" `isSuffixOf` url  = Just Turkish
     | otherwise               = Nothing
 
--- |Filter 2 <= length <= 80 and hasLetters.
+-- |Filter ok length, hasLetters, isNoStopWord and isAcceptableWord.
 filterFormulas :: [String] -> [String]
 filterFormulas =
     filter (\x -> hasOkLength x && hasLetters x && isNoStopWord x &&
