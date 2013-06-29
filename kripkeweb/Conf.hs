@@ -133,7 +133,7 @@ options = [
     , Option "" ["mlformula"]
       (ReqArg (\fml optns -> let f = optFlags optns
                              in  optns { optFlags = MLFmlEval `S.insert` f,
-                                         optFml   = T.pack fml }) "PLFORMULA" )
+                                         optFml   = T.pack fml }) "MLFORMULA" )
       "evaluate the PL formula"
     , Option "" ["lambdatype"]
       (ReqArg (\t optns -> let f = optFlags optns
