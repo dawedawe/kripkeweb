@@ -53,7 +53,6 @@ import Control.Monad (liftM, when)
 import Data.Monoid
 import qualified Data.List as L
 import qualified Data.Map as M
-import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Database.PostgreSQL.Simple
