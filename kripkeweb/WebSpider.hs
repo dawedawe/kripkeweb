@@ -298,17 +298,17 @@ parseMeta tgs =
                     (t ~== TagOpen meta [("http-equiv", "keywords")]) ||
                     (t ~== TagOpen meta [("http-equiv", "Keywords")]) ||
                     (t ~== TagOpen meta [("http-equiv", "KEYWORDS")])) tgs
-      desc      = getTagContent descTags
-      keyw      = getTagContent keywTags
+      desc      = getFirstTagContentAttrib descTags
+      keyw      = getFirstTagContentAttrib keywTags
       metaWords = words (replace "," " " (desc ++ " " ++ keyw))
     in
       (filterFormulas . map lowerString . concatMap tokenize) metaWords
 
 -- |Get the content attribute value ouf of the first tag in the given list if
 -- it's there.
-getTagContent :: [Tag String] -> String
-getTagContent []    = ""
-getTagContent (x:_) = fromAttrib "content" x
+getFirstTagContentAttrib :: [Tag String] -> String
+getFirstTagContentAttrib []    = ""
+getFirstTagContentAttrib (x:_) = fromAttrib "content" x
 
 -- |Parse the webpage title ouf of the <title> tag.
 parseTitle :: [Tag String] -> Maybe String
