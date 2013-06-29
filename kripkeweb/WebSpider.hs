@@ -221,17 +221,17 @@ constructLambdaRels :: T.Text -> [Tag String] -> [String] -> [String] ->
                        (LambdaRels, Maybe Algorithm)
 constructLambdaRels url tgs mtaFmls bdyFmls =
     let
+      stalgo = chooseStemAlgo (T.unpack url) tgs
+      sf     = constructStemFunc stalgo
     -- meta raw
       muFmls = addCount (map T.pack mtaFmls)
       mr1    = OneToNtuples url (S.fromList muFmls)
     -- meta stemmed
-      sa     = chooseStemAlgo (T.unpack url) tgs
-      sf     = constructStemFunc sa
       msFmls = addCount (map (sf . T.pack) mtaFmls)
       mr2    = OneToNtuples url (S.fromList msFmls)
     -- meta soundexed
-      mefmls = filter isSoundExHash (map soundexNARA mtaFmls)
-      mr3'   = addCount (map T.pack mefmls)
+      meFmls = filter isSoundExHash (map soundexNARA mtaFmls)
+      mr3'   = addCount (map T.pack meFmls)
       mr3    = OneToNtuples url (S.fromList mr3')
 
     -- body raw
@@ -245,7 +245,7 @@ constructLambdaRels url tgs mtaFmls bdyFmls =
       br3'   = addCount (map T.pack beFmls)
       br3    = OneToNtuples url (S.fromList br3')
     in
-      (LambdaRels mr1 mr2 mr3 br1 br2 br3, sa)
+      (LambdaRels mr1 mr2 mr3 br1 br2 br3, stalgo)
 
 -- |Add Count to the list of formulas.
 addCount :: [T.Text] -> [(T.Text, Int)]
