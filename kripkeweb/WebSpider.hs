@@ -207,12 +207,12 @@ getPage prx url =
 getTags :: Maybe Proxy -> String -> IO [Tag String]
 getTags prx url = getPage prx url >>= \p -> return ((canonicalizeTags . tags) p)
 
--- |Normalized and filttered metaraw/metastemmed/metasoundexed,
+-- |Normalized and filttered mainraw/mainstemmed/mainsoundexed,
 -- raw/stemmed/soundexed versions of formulas of an url.
 getLambdaRels :: Maybe Proxy -> T.Text -> IO (LambdaRels, Maybe Algorithm)
 getLambdaRels prx url = do
     tgs         <- getTags prx (T.unpack url)
-    let mtaFmls = parseMeta tgs
+    let mtaFmls = parseMain tgs
     let bdyFmls = (filterFormulas . map lowerString .
                   tokenize . innerText . filterScript) tgs
     return (constructLambdaRels url tgs mtaFmls bdyFmls)
@@ -223,13 +223,13 @@ constructLambdaRels url tgs mtaFmls bdyFmls =
     let
       stalgo = chooseStemAlgo (T.unpack url) tgs
       sf     = constructStemFunc stalgo
-    -- meta raw
+    -- main raw
       muFmls = addCount (map T.pack mtaFmls)
       mr1    = OneToNtuples url (S.fromList muFmls)
-    -- meta stemmed
+    -- main stemmed
       msFmls = addCount (map (sf . T.pack) mtaFmls)
       mr2    = OneToNtuples url (S.fromList msFmls)
-    -- meta soundexed
+    -- main soundexed
       meFmls = filter isSoundExHash (map soundexNARA mtaFmls)
       mr3'   = addCount (map T.pack meFmls)
       mr3    = OneToNtuples url (S.fromList mr3')
@@ -279,6 +279,16 @@ parseLang t@(TagOpen "html" _ : _) =
 parseLang (_:xs)                   = parseLang xs
 parseLang []                       = Nothing
 
+-- |Parse the meta, title and hx tags as the main information of a page.
+parseMain :: [Tag String] -> [String]
+parseMain tgs =
+    let
+      mtgs = parseMeta tgs
+      ttgs = parseTitle tgs
+      htgs = parseHeadlines tgs
+    in
+      concat [mtgs, ttgs, htgs]
+
 -- |Parse the meta description and keywords out of the tags.
 parseMeta :: [Tag String] -> [String]
 parseMeta tgs =
@@ -311,12 +321,16 @@ getFirstTagContentAttrib []    = ""
 getFirstTagContentAttrib (x:_) = fromAttrib "content" x
 
 -- |Parse the webpage title ouf of the <title> tag.
-parseTitle :: [Tag String] -> Maybe String
+parseTitle :: [Tag String] -> [String]
 parseTitle tgs =
     let tTag  = sections (~== ("<title>" :: String)) tgs
-    in  if tTag /= []
-          then maybeTagText (head tTag !! 1)
-          else Nothing 
+    in  if tTag /= [] && length (head tTag) > 0
+          then case head tTag of
+                 TagOpen "title" _ : TagText x : _ ->
+                   (filterFormulas . map lowerString . concatMap tokenize)
+                     (words x)
+                 _                                 -> []
+          else []
 
 -- |Parse and postprocess data out of hx tags.
 parseHeadlines :: [Tag String] -> [String]
