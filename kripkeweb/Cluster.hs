@@ -28,14 +28,14 @@ instance Show SpacePnt where
 type Cluster = [SpacePnt]
 
 -- |fmlSpacePos vectors of all given worlds.
-fmlSpacePoses :: (AsLambdaType f, PTrueIn f) => Model -> [f] -> [T.Text] ->
+fmlSpacePoses :: (AsLambdaType f, MTrueIn f) => Model -> [f] -> [T.Text] ->
                  [SpacePnt]
 fmlSpacePoses mdl fmls = map (fmlSpacePos mdl fmls)
 
 -- |Position of a world with regard to a list of formulas spanning a space.
 -- Expects the formulas to be already in the right LambdaType.
-fmlSpacePos :: (PTrueIn f) => Model -> [f] -> T.Text -> SpacePnt
-fmlSpacePos mdl fmls w = SpacePnt w (map (isPTrueInWorld mdl w) fmls)
+fmlSpacePos :: (MTrueIn f) => Model -> [f] -> T.Text -> SpacePnt
+fmlSpacePos mdl fmls w = SpacePnt w (map (isMTrueInWorld mdl w) fmls)
 
 
 -- |Distance of two Bool Lists.
@@ -105,7 +105,7 @@ randomCentroids d k i
     | otherwise = error "randomCentroids: argument i < 0"
 
 -- |kMeans implementation for a boolean n dimensional space.
-kMeans :: (AsLambdaType f, PTrueIn f) => Model -> [f] -> Int ->
+kMeans :: (AsLambdaType f, MTrueIn f) => Model -> [f] -> Int ->
           IO [([Bool], Cluster)]
 kMeans mdl@(Model (Frame w _) _) fmls k = do
     let dim    = length fmls
@@ -135,7 +135,7 @@ kMeansLoop clusters centroids k j = do
       else zip centroids'' clusters'
 
 -- |kMeans implementation for a boolean n dimensional space.
-dynkMeans :: (AsLambdaType f, PTrueIn f) => Model -> [f] -> Int ->
+dynkMeans :: (AsLambdaType f, MTrueIn f) => Model -> [f] -> Int ->
           IO [([Bool], Cluster)]
 dynkMeans mdl@(Model (Frame w _) _) fmls k = do
     let dim    = length fmls
