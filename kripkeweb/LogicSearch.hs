@@ -3,7 +3,7 @@
 module LogicSearch
 ( AsLambdaType
 , PLFml (..)
-, MLFml (..)
+, Fml (..)
 , PTrueIn
 , Quantor (..)
 , TrueIn
@@ -87,13 +87,13 @@ data PLFml = PLVar T.Text
            | PLImp PLFml PLFml
 
 -- |Fml set of Modal Logic
-data MLFml = MLVar T.Text
-           | MLNot MLFml
-           | MLAnd MLFml MLFml
-           | MLOr  MLFml MLFml
-           | MLImp MLFml MLFml
-           | Box MLFml
-           | Diamond MLFml
+data Fml = Var T.Text
+         | Not Fml
+         | And Fml Fml
+         | Or  Fml Fml
+         | Imp Fml Fml
+         | Box Fml
+         | Diamond Fml
 
 instance SatWorlds PLFml where
   satWorlds c lamType (PLVar phi) = do
@@ -112,22 +112,22 @@ instance SatWorlds PLFml where
   satWorlds c lamType (PLImp phi psi) =
     satWorlds c lamType (PLOr (PLNot phi) psi)
 
-instance SatWorlds MLFml where
-  satWorlds c lamType (MLVar phi) = do
+instance SatWorlds Fml where
+  satWorlds c lamType (Var phi) = do
     phi' <- termAsLamType c lamType Nothing phi
     worldsWithFormula c lamType phi'
 
-  satWorlds c lamType (MLNot phi) =
+  satWorlds c lamType (Not phi) =
     liftM2 (\\) (worldsInLambda c lamType) (satWorlds c lamType phi)
 
-  satWorlds c lamType (MLAnd phi psi) =
+  satWorlds c lamType (And phi psi) =
     liftM2 intersect (satWorlds c lamType phi) (satWorlds c lamType psi)
 
-  satWorlds c lamType (MLOr phi psi) =
+  satWorlds c lamType (Or phi psi) =
     liftM2 union (satWorlds c lamType phi) (satWorlds c lamType psi)
 
-  satWorlds c lamType (MLImp phi psi) =
-    satWorlds c lamType (MLOr (MLNot phi) psi)
+  satWorlds c lamType (Imp phi psi) =
+    satWorlds c lamType (Or (Not phi) psi)
 
   satWorlds c lamType (Box phi) = do
     allWorlds <- worldsInLambda c lamType
@@ -137,26 +137,26 @@ instance SatWorlds MLFml where
     allWorlds <- worldsInLambda c lamType
     filterM (isTrueInWorld c lamType (Diamond phi)) allWorlds
 
-instance FSatWorlds MLFml where
-  satFWorlds c lamType (Frame w _) (MLVar phi) = do
+instance FSatWorlds Fml where
+  satFWorlds c lamType (Frame w _) (Var phi) = do
     phi' <- termAsLamType c lamType Nothing phi
     liftM (S.toList w `intersect`) (worldsWithFormula c lamType phi')
 
-  satFWorlds c lamType frm@(Frame w _) (MLNot phi) =
+  satFWorlds c lamType frm@(Frame w _) (Not phi) =
     liftM (S.toList w \\) (satFWorlds c lamType frm phi)
 
-  satFWorlds c lamType frm@(Frame w _) (MLAnd phi psi) = do
+  satFWorlds c lamType frm@(Frame w _) (And phi psi) = do
     dbWorlds <- liftM2 intersect
                   (satFWorlds c lamType frm phi) (satFWorlds c lamType frm psi)
     return (S.toList w `intersect` dbWorlds)
 
-  satFWorlds c lamType frm@(Frame w _) (MLOr phi psi) = do
+  satFWorlds c lamType frm@(Frame w _) (Or phi psi) = do
     dbWorlds <- liftM2 union
                   (satFWorlds c lamType frm phi) (satFWorlds c lamType frm psi)
     return (S.toList w `intersect` dbWorlds)
 
-  satFWorlds c lamType frm (MLImp phi psi) =
-    satFWorlds c lamType frm (MLOr (MLNot phi) psi)
+  satFWorlds c lamType frm (Imp phi psi) =
+    satFWorlds c lamType frm (Or (Not phi) psi)
 
   satFWorlds c lamType frm@(Frame w _) (Box phi) =
     filterM (isFTrueInWorld c lamType frm (Box phi)) (S.toList w)
@@ -165,7 +165,7 @@ instance FSatWorlds MLFml where
     filterM (isFTrueInWorld c lamType frm (Diamond phi)) (S.toList w)
 
 instance TrueIn PLFml where
-  isTrueInWorld c lamType (PLVar phi) w = isTrueInWorld c lamType (MLVar phi) w
+  isTrueInWorld c lamType (PLVar phi) w = isTrueInWorld c lamType (Var phi) w
 
   isTrueInWorld c lamType (PLNot phi) w =
     liftM not (isTrueInWorld c lamType phi w)
@@ -199,19 +199,19 @@ instance PTrueIn PLFml where
   isPTrueInWorld mdl w (PLImp phi psi) =
     isPTrueInWorld mdl w (PLNot phi) || isPTrueInWorld mdl w psi
 
-instance PTrueIn MLFml where
-    isPTrueInWorld (Model _ lam) w (MLVar phi) = phi `elem` lam w
+instance PTrueIn Fml where
+    isPTrueInWorld (Model _ lam) w (Var phi) = phi `elem` lam w
 
-    isPTrueInWorld mdl w (MLNot phi) = not (isPTrueInWorld mdl w phi)
+    isPTrueInWorld mdl w (Not phi) = not (isPTrueInWorld mdl w phi)
 
-    isPTrueInWorld mdl w (MLAnd phi psi) =
+    isPTrueInWorld mdl w (And phi psi) =
       isPTrueInWorld mdl w phi && isPTrueInWorld mdl w psi
 
-    isPTrueInWorld mdl w (MLOr phi psi) =
+    isPTrueInWorld mdl w (Or phi psi) =
       isPTrueInWorld mdl w phi || isPTrueInWorld mdl w psi
 
-    isPTrueInWorld mdl w (MLImp phi psi) =
-      isPTrueInWorld mdl w (MLOr (MLNot phi) psi)
+    isPTrueInWorld mdl w (Imp phi psi) =
+      isPTrueInWorld mdl w (Or (Not phi) psi)
 
     isPTrueInWorld mdl@(Model (Frame _ ar) _) w (Box phi) =
       let tgs = targetsOf' (S.toList ar) w
@@ -221,23 +221,23 @@ instance PTrueIn MLFml where
       let tgs = targetsOf' (S.toList ar) w
       in  or [isPTrueInWorld mdl t phi | t <- tgs]
 
-instance TrueIn MLFml where
-  isTrueInWorld c lamType (MLVar phi) w = do
+instance TrueIn Fml where
+  isTrueInWorld c lamType (Var phi) w = do
     phi' <- termAsLamType c lamType (Just w) phi
     fmls <- lambda c lamType w
     return (phi' `elem` fmls)
 
-  isTrueInWorld c lamType (MLNot phi) w =
+  isTrueInWorld c lamType (Not phi) w =
     liftM not (isTrueInWorld c lamType phi w)
 
-  isTrueInWorld c lamType (MLAnd phi psi) w =
+  isTrueInWorld c lamType (And phi psi) w =
     liftM2 (&&) (isTrueInWorld c lamType phi w) (isTrueInWorld c lamType psi w)
 
-  isTrueInWorld c lamType (MLOr phi psi) w =
+  isTrueInWorld c lamType (Or phi psi) w =
     liftM2 (||) (isTrueInWorld c lamType phi w) (isTrueInWorld c lamType psi w)
 
-  isTrueInWorld c lamType (MLImp phi psi) w =
-    isTrueInWorld c lamType (MLOr (MLNot phi) psi) w
+  isTrueInWorld c lamType (Imp phi psi) w =
+    isTrueInWorld c lamType (Or (Not phi) psi) w
 
   isTrueInWorld c lamType (Box phi) w = do
     tgs <- targetsOf c w
@@ -253,32 +253,32 @@ instance TrueIn MLFml where
   isUniversallyTrue c lamType fml =
     liftM2 eqListElems (satWorlds c lamType fml) (worldsInLambda c lamType)
 
-instance FTrueIn MLFml where
-  isFTrueInWorld c lamType frm (MLVar phi) w
-    | w `S.member` wSet frm = isTrueInWorld c lamType (MLVar phi) w
+instance FTrueIn Fml where
+  isFTrueInWorld c lamType frm (Var phi) w
+    | w `S.member` wSet frm = isTrueInWorld c lamType (Var phi) w
     | otherwise             = error "isFTrueInWorld: world not in frame"
 
-  isFTrueInWorld c lamType frm (MLNot phi) w
+  isFTrueInWorld c lamType frm (Not phi) w
     | w `S.member` wSet frm = liftM not (isFTrueInWorld c lamType frm phi w)
     | otherwise             = error "isFTrueInWorld: world not in frame"
 
-  isFTrueInWorld c lamType frm (MLAnd phi psi) w
+  isFTrueInWorld c lamType frm (And phi psi) w
     | w `S.member` wSet frm =
         liftM2 (&&)
           (isFTrueInWorld c lamType frm phi w)
           (isFTrueInWorld c lamType frm psi w)
     | otherwise             = error "isFTrueInWorld: world not in frame"
 
-  isFTrueInWorld c lamType frm (MLOr phi psi) w
+  isFTrueInWorld c lamType frm (Or phi psi) w
     | w `S.member` wSet frm =
         liftM2 (||)
           (isFTrueInWorld c lamType frm phi w)
           (isFTrueInWorld c lamType frm psi w)
     | otherwise             = error "isFTrueInWorld: world not in frame"
 
-  isFTrueInWorld c lamType frm (MLImp phi psi) w
+  isFTrueInWorld c lamType frm (Imp phi psi) w
     | w `S.member` wSet frm =
-        isFTrueInWorld c lamType frm (MLOr (MLNot phi) psi) w
+        isFTrueInWorld c lamType frm (Or (Not phi) psi) w
     | otherwise             = error "isFTrueInWorld: world not in frame"
 
   isFTrueInWorld c lamType frm (Box phi) w
@@ -322,25 +322,25 @@ instance AsLambdaType PLFml where
         psi' <- fmlAsLambdaType c lamType w psi
         return (PLImp phi' psi')
 
-instance AsLambdaType MLFml where
-    fmlAsLambdaType c lamType w (MLVar v) = do
+instance AsLambdaType Fml where
+    fmlAsLambdaType c lamType w (Var v) = do
         v' <- termAsLamType c lamType w v
-        return (MLVar v')
-    fmlAsLambdaType c lamType w (MLNot phi) = do
+        return (Var v')
+    fmlAsLambdaType c lamType w (Not phi) = do
         phi' <- fmlAsLambdaType c lamType w phi
-        return (MLNot phi')
-    fmlAsLambdaType c lamType w (MLAnd phi psi) = do
-        phi' <- fmlAsLambdaType c lamType w phi
-        psi' <- fmlAsLambdaType c lamType w psi
-        return (MLAnd phi' psi')
-    fmlAsLambdaType c lamType w (MLOr phi psi) = do
+        return (Not phi')
+    fmlAsLambdaType c lamType w (And phi psi) = do
         phi' <- fmlAsLambdaType c lamType w phi
         psi' <- fmlAsLambdaType c lamType w psi
-        return (MLOr phi' psi')
-    fmlAsLambdaType c lamType w (MLImp phi psi) = do
+        return (And phi' psi')
+    fmlAsLambdaType c lamType w (Or phi psi) = do
         phi' <- fmlAsLambdaType c lamType w phi
         psi' <- fmlAsLambdaType c lamType w psi
-        return (MLImp phi' psi')
+        return (Or phi' psi')
+    fmlAsLambdaType c lamType w (Imp phi psi) = do
+        phi' <- fmlAsLambdaType c lamType w phi
+        psi' <- fmlAsLambdaType c lamType w psi
+        return (Imp phi' psi')
     fmlAsLambdaType c lamType w (Box phi) = do
         phi' <- fmlAsLambdaType c lamType w phi
         return (Box phi')
@@ -356,13 +356,13 @@ instance Show PLFml where
     show (PLOr x y)      = "(" ++ show x ++ " | " ++ show y ++ ")"
     show (PLImp x y)     = "(" ++ show x ++ " -> " ++ show y ++ ")"
 
-instance Show MLFml where
-    show (MLVar x)         = show x
-    show (MLNot (MLVar x)) = "!(" ++ show x ++ ")"
-    show (MLNot x)         = '!' : show x
-    show (MLAnd x y)       = "(" ++ show x ++ " & " ++ show y ++ ")"
-    show (MLOr x y)        = "(" ++ show x ++ " | " ++ show y ++ ")"
-    show (MLImp x y)       = "(" ++ show x ++ " -> " ++ show y ++ ")"
+instance Show Fml where
+    show (Var x)         = show x
+    show (Not (Var x)) = "!(" ++ show x ++ ")"
+    show (Not x)         = '!' : show x
+    show (And x y)       = "(" ++ show x ++ " & " ++ show y ++ ")"
+    show (Or x y)        = "(" ++ show x ++ " | " ++ show y ++ ")"
+    show (Imp x y)       = "(" ++ show x ++ " -> " ++ show y ++ ")"
     show (Box x)           = "[]" ++ show x
     show (Diamond x)       = "<>" ++ show x
 
@@ -384,8 +384,8 @@ instance Eval2Bool Quantor where
 instance Read PLFml where
     readsPrec _ s = [(parsePLFml s, "")]
 
-instance Read MLFml where
-    readsPrec _ s = [(parseMLFml s, "")]
+instance Read Fml where
+    readsPrec _ s = [(parseFml s, "")]
 
 parsePLFml :: String -> PLFml
 parsePLFml xs
@@ -407,27 +407,27 @@ parsePLFml' s =
                                 in  PLImp (parsePLFml p) (parsePLFml q)
       _                      -> error "parsePLFml: malformed expression"
 
-parseMLFml :: String -> MLFml
-parseMLFml xs
-    | xs == ""                     = error "parseMLFml: malformed expression"
-    | not (balancedParentheses xs) = error "parseMLFml: missing parenthesis"
-    | otherwise                    = parseMLFml' (init (trim xs))
+parseFml :: String -> Fml
+parseFml xs
+    | xs == ""                     = error "parseFml: malformed expression"
+    | not (balancedParentheses xs) = error "parseFml: missing parenthesis"
+    | otherwise                    = parseFml' (init (trim xs))
 
--- |Helper function for parseMLFml
-parseMLFml' :: String -> MLFml
-parseMLFml' s =
+-- |Helper function for parseFml
+parseFml' :: String -> Fml
+parseFml' s =
     case s of
-      '(':'V':'a':'r':' ':xs -> MLVar (T.pack (trim xs))
-      '(':'N':'o':'t':xs     -> MLNot (parseMLFml xs)
+      '(':'V':'a':'r':' ':xs -> Var (T.pack (trim xs))
+      '(':'N':'o':'t':xs     -> Not (parseFml xs)
       '(':'A':'n':'d':xs     -> let (p, q) = parseBiOpParms (trim xs)
-                                in  MLAnd (parseMLFml p) (parseMLFml q)
+                                in  And (parseFml p) (parseFml q)
       '(':'O':'r':xs         -> let (p, q) = parseBiOpParms (trim xs)
-                                in  MLOr (parseMLFml p) (parseMLFml q)
+                                in  Or (parseFml p) (parseFml q)
       '(':'I':'m':'p':xs     -> let (p, q) = parseBiOpParms (trim xs)
-                                in  MLImp (parseMLFml p) (parseMLFml q)
-      '(':'[':']':xs         -> Box (parseMLFml xs)
-      '(':'<':'>':xs         -> Diamond (parseMLFml xs)
-      _                      -> error "parseMLFml: malformed expression"
+                                in  Imp (parseFml p) (parseFml q)
+      '(':'[':']':xs         -> Box (parseFml xs)
+      '(':'<':'>':xs         -> Diamond (parseFml xs)
+      _                      -> error "parseFml: malformed expression"
 
 -- |True if String has an equal number of opening and closing parentheses
 balancedParentheses :: String -> Bool
@@ -461,93 +461,93 @@ takeTillParenBalanced (s:ss)  o c =
 -- formula schemes
 
 -- |Lambda sets of all worlds as list of conjunctions.
-lambdaAnded :: Connection -> LambdaType -> IO [MLFml]
+lambdaAnded :: Connection -> LambdaType -> IO [Fml]
 lambdaAnded c lamType = do
     ws   <- worldsInLambda c lamType
-    fmls <- mapM (worldsLambdaCombined c lamType MLAnd) ws
+    fmls <- mapM (worldsLambdaCombined c lamType And) ws
     return (catMaybes fmls)
 
 -- |Lambda sets of all worlds as list of disjunctions.
-lambdaOred :: Connection -> LambdaType -> IO [MLFml]
+lambdaOred :: Connection -> LambdaType -> IO [Fml]
 lambdaOred c lamType = do
     ws   <- worldsInLambda c lamType
-    fmls <- mapM (worldsLambdaCombined c lamType MLOr) ws
+    fmls <- mapM (worldsLambdaCombined c lamType Or) ws
     return (catMaybes fmls)
 
 -- |Lambda sets of all worlds as list of negated conjunctions.
-lambdaAndedNegated :: Connection -> LambdaType -> IO [MLFml]
+lambdaAndedNegated :: Connection -> LambdaType -> IO [Fml]
 lambdaAndedNegated c lamType = do
     andedFmls <- lambdaAnded c lamType
-    return (map MLNot andedFmls)
+    return (map Not andedFmls)
 
 -- |Lambda sets of all worlds as lists of negated disjunctions.
-lambdaOredNegated :: Connection -> LambdaType -> IO [MLFml]
+lambdaOredNegated :: Connection -> LambdaType -> IO [Fml]
 lambdaOredNegated c lamType = do
     oredFmls <- lambdaOred c lamType
-    return (map MLNot oredFmls)
+    return (map Not oredFmls)
 
 -- |Lambda sets of all worlds as lists of diamond conjunctions.
-lambdaAndedDiamonded :: Connection -> LambdaType -> IO [MLFml]
+lambdaAndedDiamonded :: Connection -> LambdaType -> IO [Fml]
 lambdaAndedDiamonded c lamType = do
     andedFmls <- lambdaAnded c lamType
     return (map Diamond andedFmls)
 
 -- |Lambda sets of all worlds as lists of diamond disjunctions.
-lambdaOredDiamonded :: Connection -> LambdaType -> IO [MLFml]
+lambdaOredDiamonded :: Connection -> LambdaType -> IO [Fml]
 lambdaOredDiamonded c lamType = do
     oredFmls <- lambdaOred c lamType
     return (map Diamond oredFmls)
 
 -- |Lambda sets of all worlds as lists of negated diamond conjunctions.
-lambdaAndedDiamondedNegated :: Connection -> LambdaType -> IO [MLFml]
+lambdaAndedDiamondedNegated :: Connection -> LambdaType -> IO [Fml]
 lambdaAndedDiamondedNegated c lamType = do
     andedDiamondedFmls <- lambdaAndedDiamonded c lamType
-    return (map MLNot andedDiamondedFmls)
+    return (map Not andedDiamondedFmls)
 
 -- |Lambda sets of all worlds as lists of negated diamond disjunctions.
-lambdaOredDiamondedNegated :: Connection -> LambdaType -> IO [MLFml]
+lambdaOredDiamondedNegated :: Connection -> LambdaType -> IO [Fml]
 lambdaOredDiamondedNegated c lamType = do
     oredDiamondedFmls <- lambdaOredDiamonded c lamType
-    return (map MLNot oredDiamondedFmls)
+    return (map Not oredDiamondedFmls)
 
 -- |Lambda sets of all worlds as lists of diamond conjunctions.
-lambdaAndedBoxed :: Connection -> LambdaType -> IO [MLFml]
+lambdaAndedBoxed :: Connection -> LambdaType -> IO [Fml]
 lambdaAndedBoxed c lamType = do
     andedFmls <- lambdaAnded c lamType
     return (map Box andedFmls)
 
 -- |Lambda sets of all worlds as lists of diamond disjunctions.
-lambdaOredBoxed :: Connection -> LambdaType -> IO [MLFml]
+lambdaOredBoxed :: Connection -> LambdaType -> IO [Fml]
 lambdaOredBoxed c lamType = do
     oredFmls <- lambdaOred c lamType
     return (map Box oredFmls)
 
 -- |Lambda sets of all worlds as lists of negated diamond conjunctions.
-lambdaAndedBoxedNegated :: Connection -> LambdaType -> IO [MLFml]
+lambdaAndedBoxedNegated :: Connection -> LambdaType -> IO [Fml]
 lambdaAndedBoxedNegated c lamType = do
     andedBoxedFmls <- lambdaAndedBoxed c lamType
-    return (map MLNot andedBoxedFmls)
+    return (map Not andedBoxedFmls)
 
 -- |Lambda sets of all worlds as lists of negated diamond disjunctions.
-lambdaOredBoxedNegated :: Connection -> LambdaType -> IO [MLFml]
+lambdaOredBoxedNegated :: Connection -> LambdaType -> IO [Fml]
 lambdaOredBoxedNegated c lamType = do
     oredBoxedFmls <- lambdaOredBoxed c lamType
-    return (map MLNot oredBoxedFmls)
+    return (map Not oredBoxedFmls)
 
 -- |Lambda formulas of a single world as one disjunction.
-worldsLambdaCombined :: Connection -> LambdaType -> (MLFml -> MLFml -> MLFml) ->
-                        T.Text -> IO (Maybe MLFml)
+worldsLambdaCombined :: Connection -> LambdaType -> (Fml -> Fml -> Fml) ->
+                        T.Text -> IO (Maybe Fml)
 worldsLambdaCombined c lamType j w = do
     fmls <- worldFormulas c lamType w
     return (formulasToJunction j fmls)
     
 -- |Convert a T.Text list into a PL (dis/kon)junction.
-formulasToJunction :: (MLFml -> MLFml -> MLFml) -> [T.Text] -> Maybe MLFml
+formulasToJunction :: (Fml -> Fml -> Fml) -> [T.Text] -> Maybe Fml
 formulasToJunction _ []     = Nothing
 formulasToJunction j (f:fs) =
     let
-      accu = MLVar f
-      fmls = map MLVar fs
+      accu = Var f
+      fmls = map Var fs
     in
       Just (foldl j accu fmls)
 
