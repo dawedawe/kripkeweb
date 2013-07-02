@@ -61,7 +61,7 @@ main = do
       mapM_ print rs
 
     when (PLFmlEval `S.member` optFlags (opts conf)) $ do
-      let frm = read (T.unpack (optFml (opts conf))) :: Fml
+      let frm = read (T.unpack (optFml (opts conf))) :: PLFml
       putStrLn ("plformula: " ++ show frm ++ " =")
       ws <- satWorlds c lamType frm
       mapM_ print ws
@@ -83,7 +83,7 @@ main = do
       mapM_ print fr
 
     when (RSetLamdaPL `S.member` optFlags (opts conf)) $ do
-      let frm = read (T.unpack (optFml (opts conf))) :: Fml
+      let frm = read (T.unpack (optFml (opts conf))) :: PLFml
       putStrLn ("formula: " ++ show frm ++ " =")
       rs <- roughSetOfLamPL c lamType frm
       printRoughSet rs

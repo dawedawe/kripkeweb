@@ -2,7 +2,7 @@
 
 module LogicSearch
 ( AsLambdaType
-, Fml (..)
+, PLFml (..)
 , MLFml (..)
 , PTrueIn
 , Quantor (..)
@@ -30,7 +30,7 @@ module LogicSearch
 , lambdaOredNegated
 , satWorlds
 , satFWorlds
-, parseFml
+, parsePLFml
 ) where
 
 import Control.Monad (filterM, liftM, liftM2)
@@ -80,12 +80,12 @@ class AsLambdaType x where
 class Eval2Bool x where
     eval2B :: Connection -> LambdaType -> x -> IO Bool
 
--- |Fml set of Propositional Logic
-data Fml = Var T.Text
-         | Not Fml
-         | And Fml Fml
-         | Or  Fml Fml
-         | Imp Fml Fml
+-- |Fml set of Propositional Logic.
+data PLFml = PLVar T.Text
+           | PLNot PLFml
+           | PLAnd PLFml PLFml
+           | PLOr  PLFml PLFml
+           | PLImp PLFml PLFml
 
 -- |Fml set of Modal Logic
 data MLFml = MLVar T.Text
@@ -96,22 +96,22 @@ data MLFml = MLVar T.Text
            | Box MLFml
            | Diamond MLFml
 
-instance SatWorlds Fml where
-  satWorlds c lamType (Var phi) = do
+instance SatWorlds PLFml where
+  satWorlds c lamType (PLVar phi) = do
     phi' <- termAsLamType c lamType Nothing phi
     worldsWithFormula c lamType phi'
 
-  satWorlds c lamType (Not phi) =
+  satWorlds c lamType (PLNot phi) =
     liftM2 (\\) (worldsInLambda c lamType) (satWorlds c lamType phi)
 
-  satWorlds c lamType (And phi psi) =
+  satWorlds c lamType (PLAnd phi psi) =
     liftM2 intersect (satWorlds c lamType phi) (satWorlds c lamType psi)
 
-  satWorlds c lamType (Or phi psi) =
+  satWorlds c lamType (PLOr phi psi) =
     liftM2 union (satWorlds c lamType phi) (satWorlds c lamType psi)
 
-  satWorlds c lamType (Imp phi psi) =
-    satWorlds c lamType (Or (Not phi) psi)
+  satWorlds c lamType (PLImp phi psi) =
+    satWorlds c lamType (PLOr (PLNot phi) psi)
 
 instance SatWorlds MLFml where
   satWorlds c lamType (MLVar phi) = do
@@ -165,20 +165,20 @@ instance FSatWorlds MLFml where
   satFWorlds c lamType frm@(Frame w _) (Diamond phi) =
     filterM (isFTrueInWorld c lamType frm (Diamond phi)) (S.toList w)
 
-instance TrueIn Fml where
-  isTrueInWorld c lamType (Var phi) w = isTrueInWorld c lamType (MLVar phi) w
+instance TrueIn PLFml where
+  isTrueInWorld c lamType (PLVar phi) w = isTrueInWorld c lamType (MLVar phi) w
 
-  isTrueInWorld c lamType (Not phi) w =
+  isTrueInWorld c lamType (PLNot phi) w =
     liftM not (isTrueInWorld c lamType phi w)
 
-  isTrueInWorld c lamType (And phi psi) w =
+  isTrueInWorld c lamType (PLAnd phi psi) w =
     liftM2 (&&) (isTrueInWorld c lamType phi w) (isTrueInWorld c lamType psi w)
 
-  isTrueInWorld c lamType (Or phi psi) w =
+  isTrueInWorld c lamType (PLOr phi psi) w =
     liftM2 (||) (isTrueInWorld c lamType phi w) (isTrueInWorld c lamType psi w)
 
-  isTrueInWorld c lamType (Imp phi psi) w =
-    isTrueInWorld c lamType (Or (Not phi) psi) w
+  isTrueInWorld c lamType (PLImp phi psi) w =
+    isTrueInWorld c lamType (PLOr (PLNot phi) psi) w
 
   isTrueInWorlds c lamType fml ws =
     liftM and (mapM (isTrueInWorld c lamType fml) ws)
@@ -186,19 +186,19 @@ instance TrueIn Fml where
   isUniversallyTrue c lamType fml =
     liftM2 eqListElems (satWorlds c lamType fml) (worldsInLambda c lamType)
 
-instance PTrueIn Fml where
-  isPTrueInWorld (Model _ lam) w (Var phi) = phi `elem` lam w
+instance PTrueIn PLFml where
+  isPTrueInWorld (Model _ lam) w (PLVar phi) = phi `elem` lam w
 
-  isPTrueInWorld mdl w (Not phi) = not (isPTrueInWorld mdl w phi)
+  isPTrueInWorld mdl w (PLNot phi) = not (isPTrueInWorld mdl w phi)
 
-  isPTrueInWorld mdl w (And phi psi) =
+  isPTrueInWorld mdl w (PLAnd phi psi) =
     isPTrueInWorld mdl w phi && isPTrueInWorld mdl w psi
 
-  isPTrueInWorld mdl w (Or phi psi) =
+  isPTrueInWorld mdl w (PLOr phi psi) =
     isPTrueInWorld mdl w phi || isPTrueInWorld mdl w psi
 
-  isPTrueInWorld mdl w (Imp phi psi) =
-    isPTrueInWorld mdl w (Not phi) || isPTrueInWorld mdl w psi
+  isPTrueInWorld mdl w (PLImp phi psi) =
+    isPTrueInWorld mdl w (PLNot phi) || isPTrueInWorld mdl w psi
 
 instance PTrueIn MLFml where
     isPTrueInWorld (Model _ lam) w (MLVar phi) = phi `elem` lam w
@@ -303,25 +303,25 @@ instance FTrueIn MLFml where
     sw <- satFWorlds c lamType frm fml
     return (S.fromList sw == w)
 
-instance AsLambdaType Fml where
-    fmlAsLambdaType c lamType w (Var v) = do
+instance AsLambdaType PLFml where
+    fmlAsLambdaType c lamType w (PLVar v) = do
         v' <- termAsLamType c lamType w v
-        return (Var v')
-    fmlAsLambdaType c lamType w (Not phi) = do
+        return (PLVar v')
+    fmlAsLambdaType c lamType w (PLNot phi) = do
         phi' <- fmlAsLambdaType c lamType w phi
-        return (Not phi')
-    fmlAsLambdaType c lamType w (And phi psi) = do
-        phi' <- fmlAsLambdaType c lamType w phi
-        psi' <- fmlAsLambdaType c lamType w psi
-        return (And phi' psi')
-    fmlAsLambdaType c lamType w (Or phi psi) = do
+        return (PLNot phi')
+    fmlAsLambdaType c lamType w (PLAnd phi psi) = do
         phi' <- fmlAsLambdaType c lamType w phi
         psi' <- fmlAsLambdaType c lamType w psi
-        return (Or phi' psi')
-    fmlAsLambdaType c lamType w (Imp phi psi) = do
+        return (PLAnd phi' psi')
+    fmlAsLambdaType c lamType w (PLOr phi psi) = do
         phi' <- fmlAsLambdaType c lamType w phi
         psi' <- fmlAsLambdaType c lamType w psi
-        return (Imp phi' psi')
+        return (PLOr phi' psi')
+    fmlAsLambdaType c lamType w (PLImp phi psi) = do
+        phi' <- fmlAsLambdaType c lamType w phi
+        psi' <- fmlAsLambdaType c lamType w psi
+        return (PLImp phi' psi')
 
 instance AsLambdaType MLFml where
     fmlAsLambdaType c lamType w (MLVar v) = do
@@ -349,13 +349,13 @@ instance AsLambdaType MLFml where
         phi' <- fmlAsLambdaType c lamType w phi
         return (Diamond phi')
 
-instance Show Fml where
-    show (Var x)       = show x
-    show (Not (Var x)) = "!(" ++ show (Var x) ++ ")"
-    show (Not x)       = '!' : show x
-    show (And x y)     = "(" ++ show x ++ " & " ++ show y ++ ")"
-    show (Or x y)      = "(" ++ show x ++ " | " ++ show y ++ ")"
-    show (Imp x y)     = "(" ++ show x ++ " -> " ++ show y ++ ")"
+instance Show PLFml where
+    show (PLVar x)         = show x
+    show (PLNot (PLVar x)) = "!(" ++ show (PLVar x) ++ ")"
+    show (PLNot x)       = '!' : show x
+    show (PLAnd x y)     = "(" ++ show x ++ " & " ++ show y ++ ")"
+    show (PLOr x y)      = "(" ++ show x ++ " | " ++ show y ++ ")"
+    show (PLImp x y)     = "(" ++ show x ++ " -> " ++ show y ++ ")"
 
 instance Show MLFml where
     show (MLVar x)         = show x
@@ -382,31 +382,31 @@ instance Eval2Bool Quantor where
 --------------------------------------------------------------------------------
 -- parsing related functions
 
-instance Read Fml where
-    readsPrec _ s = [(parseFml s, "")]
+instance Read PLFml where
+    readsPrec _ s = [(parsePLFml s, "")]
 
 instance Read MLFml where
     readsPrec _ s = [(parseMLFml s, "")]
 
-parseFml :: String -> Fml
-parseFml xs
-    | xs == ""                     = error "parseFml: malformed expression"
-    | not (balancedParentheses xs) = error "parseFml: missing parenthesis"
-    | otherwise                    = parseFml' (init (trim xs))
+parsePLFml :: String -> PLFml
+parsePLFml xs
+    | xs == ""                     = error "parsePLFml: malformed expression"
+    | not (balancedParentheses xs) = error "parsePLFml: missing parenthesis"
+    | otherwise                    = parsePLFml' (init (trim xs))
 
--- |Helper function for parseFml
-parseFml' :: String -> Fml
-parseFml' s =
+-- |Helper function for parsePLFml.
+parsePLFml' :: String -> PLFml
+parsePLFml' s =
     case s of
-      '(':'V':'a':'r':' ':xs -> Var (T.pack (trim xs))
-      '(':'N':'o':'t':xs     -> Not (parseFml xs)
+      '(':'V':'a':'r':' ':xs -> PLVar (T.pack (trim xs))
+      '(':'N':'o':'t':xs     -> PLNot (parsePLFml xs)
       '(':'A':'n':'d':xs     -> let (p, q) = parseBiOpParms (trim xs)
-                                in  And (parseFml p) (parseFml q)
+                                in  PLAnd (parsePLFml p) (parsePLFml q)
       '(':'O':'r':xs         -> let (p, q) = parseBiOpParms (trim xs)
-                                in  Or (parseFml p) (parseFml q)
+                                in  PLOr (parsePLFml p) (parsePLFml q)
       '(':'I':'m':'p':xs     -> let (p, q) = parseBiOpParms (trim xs)
-                                in  Imp (parseFml p) (parseFml q)
-      _                      -> error "parseFml: malformed expression"
+                                in  PLImp (parsePLFml p) (parsePLFml q)
+      _                      -> error "parsePLFml: malformed expression"
 
 parseMLFml :: String -> MLFml
 parseMLFml xs

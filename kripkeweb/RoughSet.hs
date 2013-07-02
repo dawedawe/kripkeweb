@@ -52,28 +52,28 @@ roughSetOfLamList c lamType l = do
     return (RoughSet lApprox uApprox)
 
 -- |Map Propositional Logic to combinations of Rough Set calculations.
-roughSetOfLamPL :: Connection -> LambdaType -> Fml -> IO RoughSet
+roughSetOfLamPL :: Connection -> LambdaType -> PLFml -> IO RoughSet
 roughSetOfLamPL c lamType fml =
     case fml of
-      (Var x)   -> roughSetOfLamList c lamType [x]
-      (Not x)   -> do
+      (PLVar x)   -> roughSetOfLamList c lamType [x]
+      (PLNot x)   -> do
                      (RoughSet lx ux) <- roughSetOfLamPL c lamType x
                      upp              <- negateLambaWorlds c lamType lx
                      low              <- negateLambaWorlds c lamType ux
                      return (RoughSet low upp)
-      (And x y) -> do
+      (PLAnd x y) -> do
                      (RoughSet lx ux) <- roughSetOfLamPL c lamType x
                      (RoughSet ly uy) <- roughSetOfLamPL c lamType y
                      let low = lx `intersect` ly
                      let upp = ux `intersect` uy
                      return (RoughSet low upp)
-      (Or x y)  -> do
+      (PLOr x y)  -> do
                      (RoughSet lx ux) <- roughSetOfLamPL c lamType x
                      (RoughSet ly uy) <- roughSetOfLamPL c lamType y
                      let low = lx `union` ly
                      let upp = ux `union` uy
                      return (RoughSet low upp)
-      (Imp x y) -> roughSetOfLamPL c lamType (Or (Not x) y)
+      (PLImp x y) -> roughSetOfLamPL c lamType (PLOr (PLNot x) y)
 
 -- |Take a list of out-links as the target concept.
 roughSetOfInLinks :: Connection -> [T.Text] -> IO RoughSet
