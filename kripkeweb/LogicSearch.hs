@@ -4,7 +4,7 @@ module LogicSearch
 ( AsLambdaType
 , PLFml (..)
 , Fml (..)
-, PTrueIn
+, MTrueIn
 , Quantor (..)
 , TrueIn
 , eval2B
@@ -12,7 +12,7 @@ module LogicSearch
 , isFTrueInWorld
 , isFTrueInWorlds
 , isFUniversallyTrue
-, isPTrueInWorld
+, isMTrueInWorld
 , isTrueInWorld
 , isTrueInWorlds
 , isUniversallyTrue
@@ -61,8 +61,8 @@ class FTrueIn x where
 
 -- |Uses precomputed model to evaluate x. Expects the given model to have the
 -- right lambda type.
-class PTrueIn x where
-    isPTrueInWorld :: Model -> T.Text -> x -> Bool
+class MTrueIn x where
+    isMTrueInWorld :: Model -> T.Text -> x -> Bool
 
 -- |Worlds satisfying x.
 class SatWorlds x where
@@ -185,41 +185,41 @@ instance TrueIn PLFml where
   isUniversallyTrue c lamType fml =
     liftM2 eqListElems (satWorlds c lamType fml) (worldsInLambda c lamType)
 
-instance PTrueIn PLFml where
-  isPTrueInWorld (Model _ lam) w (PLVar phi) = phi `elem` lam w
+instance MTrueIn PLFml where
+  isMTrueInWorld (Model _ lam) w (PLVar phi) = phi `elem` lam w
 
-  isPTrueInWorld mdl w (PLNot phi) = not (isPTrueInWorld mdl w phi)
+  isMTrueInWorld mdl w (PLNot phi) = not (isMTrueInWorld mdl w phi)
 
-  isPTrueInWorld mdl w (PLAnd phi psi) =
-    isPTrueInWorld mdl w phi && isPTrueInWorld mdl w psi
+  isMTrueInWorld mdl w (PLAnd phi psi) =
+    isMTrueInWorld mdl w phi && isMTrueInWorld mdl w psi
 
-  isPTrueInWorld mdl w (PLOr phi psi) =
-    isPTrueInWorld mdl w phi || isPTrueInWorld mdl w psi
+  isMTrueInWorld mdl w (PLOr phi psi) =
+    isMTrueInWorld mdl w phi || isMTrueInWorld mdl w psi
 
-  isPTrueInWorld mdl w (PLImp phi psi) =
-    isPTrueInWorld mdl w (PLNot phi) || isPTrueInWorld mdl w psi
+  isMTrueInWorld mdl w (PLImp phi psi) =
+    isMTrueInWorld mdl w (PLNot phi) || isMTrueInWorld mdl w psi
 
-instance PTrueIn Fml where
-    isPTrueInWorld (Model _ lam) w (Var phi) = phi `elem` lam w
+instance MTrueIn Fml where
+    isMTrueInWorld (Model _ lam) w (Var phi) = phi `elem` lam w
 
-    isPTrueInWorld mdl w (Not phi) = not (isPTrueInWorld mdl w phi)
+    isMTrueInWorld mdl w (Not phi) = not (isMTrueInWorld mdl w phi)
 
-    isPTrueInWorld mdl w (And phi psi) =
-      isPTrueInWorld mdl w phi && isPTrueInWorld mdl w psi
+    isMTrueInWorld mdl w (And phi psi) =
+      isMTrueInWorld mdl w phi && isMTrueInWorld mdl w psi
 
-    isPTrueInWorld mdl w (Or phi psi) =
-      isPTrueInWorld mdl w phi || isPTrueInWorld mdl w psi
+    isMTrueInWorld mdl w (Or phi psi) =
+      isMTrueInWorld mdl w phi || isMTrueInWorld mdl w psi
 
-    isPTrueInWorld mdl w (Imp phi psi) =
-      isPTrueInWorld mdl w (Or (Not phi) psi)
+    isMTrueInWorld mdl w (Imp phi psi) =
+      isMTrueInWorld mdl w (Or (Not phi) psi)
 
-    isPTrueInWorld mdl@(Model (Frame _ ar) _) w (Box phi) =
+    isMTrueInWorld mdl@(Model (Frame _ ar) _) w (Box phi) =
       let tgs = targetsOf' (S.toList ar) w
-      in  and [isPTrueInWorld mdl t phi | t <- tgs]
+      in  and [isMTrueInWorld mdl t phi | t <- tgs]
 
-    isPTrueInWorld mdl@(Model (Frame _ ar) _) w (Diamond phi) =
+    isMTrueInWorld mdl@(Model (Frame _ ar) _) w (Diamond phi) =
       let tgs = targetsOf' (S.toList ar) w
-      in  or [isPTrueInWorld mdl t phi | t <- tgs]
+      in  or [isMTrueInWorld mdl t phi | t <- tgs]
 
 instance TrueIn Fml where
   isTrueInWorld c lamType (Var phi) w = do
