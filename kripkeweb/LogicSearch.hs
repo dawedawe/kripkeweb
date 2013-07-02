@@ -30,6 +30,7 @@ module LogicSearch
 , lambdaOredNegated
 , satWorlds
 , satFWorlds
+, satMWorlds
 ) where
 
 import Control.Monad (filterM, liftM, liftM2)
@@ -71,6 +72,10 @@ class SatWorlds x where
 -- |Worlds in frame satisfying x.
 class FSatWorlds x where
     satFWorlds :: Connection -> LambdaType -> Frame -> x -> IO [T.Text]
+
+-- |Worlds in model satisfying x.
+class MSatWorlds x where
+    satMWorlds :: Model -> x -> [T.Text]
 
 -- |Stuff that can be transformed to other LambdaType representations.
 class AsLambdaType x where
@@ -163,6 +168,28 @@ instance FSatWorlds Fml where
 
   satFWorlds c lamType frm@(Frame w _) (Diamond phi) =
     filterM (isFTrueInWorld c lamType frm (Diamond phi)) (S.toList w)
+
+instance MSatWorlds Fml where
+  satMWorlds (Model (Frame w _) lam) (Var phi) =
+    S.toList $ S.filter (\x -> phi `elem` lam x) w
+
+  satMWorlds mdl@(Model (Frame w _) _) (Not phi) =
+    S.toList w \\ satMWorlds mdl phi
+
+  satMWorlds mdl (And phi psi) =
+    (satMWorlds mdl phi) `intersect` (satMWorlds mdl psi)
+
+  satMWorlds mdl (Or phi psi) =
+    (satMWorlds mdl phi) `union` (satMWorlds mdl psi)
+
+  satMWorlds mdl (Imp phi psi) =
+    satMWorlds mdl (Or (Not phi) psi)
+
+  satMWorlds mdl@(Model (Frame w _) _) (Box phi) =
+    S.toList $ S.filter (\x -> isMTrueInWorld mdl x (Box phi)) w
+
+  satMWorlds mdl@(Model (Frame w _) _) (Diamond phi) =
+    S.toList $ S.filter (\x -> isMTrueInWorld mdl x (Diamond phi)) w
 
 instance TrueIn PLFml where
   isTrueInWorld c lamType (PLVar phi) w = isTrueInWorld c lamType (Var phi) w
