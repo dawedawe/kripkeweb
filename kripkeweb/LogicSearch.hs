@@ -30,7 +30,6 @@ module LogicSearch
 , lambdaOredNegated
 , satWorlds
 , satFWorlds
-, parsePLFml
 ) where
 
 import Control.Monad (filterM, liftM, liftM2)
