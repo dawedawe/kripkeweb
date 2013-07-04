@@ -1,5 +1,6 @@
 module Tfidf
-( allTopTfidf
+( allTfidf
+, allTopTfidf
 , tfidf
 , tfidfSortedSearch
 , worldsTopTfidf
