@@ -11,6 +11,7 @@ module Util
 , hasLetters
 , hasTransViolation
 , lowerString
+, relCountAmongWorlds
 , relsStartingIn'
 , relsStartingWith'
 , targetsOf'
@@ -102,4 +103,9 @@ dropOverlappingPairs ((x1, x2):xs) =
       ps = filter (\(y1,y2) -> y1 `notElem` [x1,x2] && y2 `notElem` [x1,x2]) xs
     in
       (x1, x2) : dropOverlappingPairs ps
+
+-- |Count of rrelations between elements in the given list.
+relCountAmongWorlds :: (Eq a) => [(a, a)] -> [a] -> Int
+relCountAmongWorlds rel ws =
+    length $ filter (\(s, t) -> s `elem` ws && t `elem` ws) rel
 
