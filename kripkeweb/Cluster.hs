@@ -330,6 +330,49 @@ splitCluster cluster =
       [c0, c1]
 
 --------------------------------------------------------------------------------
+-- functions for displaying cluster information
+
+data ClusterStats = ClusterStats
+                  { clusterSize    :: Int
+                  , clusterStatSim :: Maybe Double
+                  , cliquenessStat :: Maybe Double
+                  }
+
+instance Show ClusterStats where
+    show cs =
+      "size = " ++ show (clusterSize cs) ++
+      " similariy = " ++ show (clusterStatSim cs) ++
+      " cliqueness = " ++ show (cliquenessStat cs)
+
+-- |Print the stats of all given clusers and the avgClusterSim, avgClusterDisim
+printClusterStats :: Model -> [Cluster] -> IO ()
+printClusterStats mdl clusters = do
+    let ss = map (genClusterStats mdl) clusters
+    mapM_ print ss
+    putStrLn ("avgClusterSim = " ++ show (avgClusterSim mdl clusters))
+    putStrLn ("avgClusterDisim = " ++ show (avgClusterDisim mdl clusters))
+
+-- |Generate a ClusterStats for the given Cluster.
+genClusterStats :: Model -> Cluster -> ClusterStats
+genClusterStats mdl@(Model frm _) cluster =
+    let
+      sze = length cluster
+      sim = clusterSim mdl cluster
+      clq = cliqueness frm cluster
+    in
+      ClusterStats sze sim clq
+
+-- |Print the given clusers, seperated by an empty newline.
+printClusters :: [Cluster] -> IO ()
+printClusters = mapM_ (\cls -> printCluster cls >> putStrLn "")
+
+-- |Print the names of a cluser, one per line.
+printCluster :: Cluster -> IO ()
+printCluster cluster = do
+    let ns = map name cluster
+    mapM_ print ns
+
+--------------------------------------------------------------------------------
 -- functions for graph related measures
 
 -- |Edge count in a total directed graph.
@@ -337,13 +380,14 @@ edgesInDigraphClique :: Int -> Int
 edgesInDigraphClique n = n * (n - 1)
 
 -- |Links in a cluster / edge count of a digraph clique.
-clusterToDigraphCliqueMeasure :: Connection -> Cluster -> IO Double
-clusterToDigraphCliqueMeasure _ []      =
-    error "clusterToTotalDGraphMeasure: empty cluster given"
-clusterToDigraphCliqueMeasure c cluster = do
-    let ws = map name cluster
-    let n  = length ws
-    let t  = edgesInDigraphClique n
-    lc     <- linkCountAmongWorlds c ws
-    return (fromIntegral lc / fromIntegral t)
+cliqueness :: Frame -> Cluster -> Maybe Double
+cliqueness _           []      = Nothing
+cliqueness (Frame _ r) cluster =
+    let
+      ws = map name cluster
+      n  = length ws
+      t  = edgesInDigraphClique n
+      lc = relCountAmongWorlds (S.toList r) ws
+    in
+      Just (fromIntegral lc / fromIntegral t)
 
