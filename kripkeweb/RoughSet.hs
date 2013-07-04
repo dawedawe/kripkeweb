@@ -17,7 +17,7 @@ import Database.PostgreSQL.Simple
 
 import DB
 import KripkeTypes
-import LogicSearch
+import Logic
 
 data RoughSet = RoughSet { lowerApprox :: [T.Text]
                          , upperApprox ::  [T.Text]

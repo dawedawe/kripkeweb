@@ -14,8 +14,8 @@ import System.Random
 
 import DB
 import KripkeTypes
-import LogicSearch
-import Tfidf
+import Logic
+import FormulaSchemes
 import Util
 
 data SpacePnt = SpacePnt { name     :: T.Text

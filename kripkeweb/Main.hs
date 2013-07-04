@@ -13,7 +13,7 @@ import Conf
 import DB
 import KripkeTypes
 import LinkRing
-import LogicSearch
+import Logic
 import Model
 import PageRank
 import RoughSet

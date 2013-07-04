@@ -13,7 +13,7 @@ import Database.PostgreSQL.Simple
 
 import DB
 import KripkeTypes
-import LogicSearch
+import Logic
 import Util
 
 -- |Reflexive (T) and symmetric (B) subframe of (W, R).
