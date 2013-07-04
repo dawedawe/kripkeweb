@@ -1,10 +1,7 @@
 - fix encoding issues in console output
-- FOL search interface
-- backwards box and diamond operators
-- sites with max out-/in-links
-- find subsets satiesfying modal axioms K, T, 4, 5, . ..
 - function to check if subset forms a complete graph
 - check use of termAsLamType
 - clusterToDigraphCliqueMeasure with different formula schemes 
 - partitions with different formula schemes, correlation of crosslink counts
   with schemes?
+- get rss feed data, parse them and add them to the main info lambda type
