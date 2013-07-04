@@ -192,7 +192,8 @@ setMaybeaToSeta = S.map fromJust . S.delete Nothing
 getPage :: Maybe Proxy -> String -> IO Page
 getPage prx url =
     runShpider $ do
-      setCurlOpts [CurlTimeout 20, CurlFollowLocation True]
+      setCurlOpts [CurlTimeout 20, CurlFollowLocation True,
+        CurlUserAgent userAgent]
       when (isJust prx) $ do
         let prx' = fromJust prx
         addCurlOpts [CurlProxy (fst prx'), CurlProxyPort (snd prx'),
@@ -200,6 +201,10 @@ getPage prx url =
       (_,p) <- download url
       return p
 
+userAgent :: String
+userAgent = "Mozilla/5.0 (Linux; U; Android 2.3.3; de-de; \
+    \HTC Desire Build/GRI40) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 \
+    \Mobile Safari/533.1"
 --------------------------------------------------------------------------------
 -- functions for the lambda relation
 
