@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Util
-( dropRelsWithElemIn
+( dropFirstAndLastXPercent
+, dropRelsWithElemIn
 , dropRelsWithElemInS
 , dropTransViolations
 , eqListElems
@@ -108,4 +109,23 @@ dropOverlappingPairs ((x1, x2):xs) =
 relCountAmongWorlds :: (Eq a) => [(a, a)] -> [a] -> Int
 relCountAmongWorlds rel ws =
     length $ filter (\(s, t) -> s `elem` ws && t `elem` ws) rel
+
+-- |Drop the first and last p percent of the list elements.
+dropFirstAndLastXPercent :: Int -> [a] -> [a]
+dropFirstAndLastXPercent p xs =
+    dropLastXPercent p (dropFirstXPercent p xs)
+
+-- |Drop the first p percent of the list elements.
+dropFirstXPercent :: Int -> [a] -> [a]
+dropFirstXPercent p xs =
+    let n = round (fromIntegral (length xs) * toPercent p)
+    in  drop n xs
+
+-- |Drop the last p percent of the list elements.
+dropLastXPercent :: Int -> [a] -> [a]
+dropLastXPercent p xs = reverse $ dropFirstXPercent p (reverse xs)
+
+-- |Convert p to p / 100.
+toPercent :: Int -> Double
+toPercent p = fromIntegral p / 100
 

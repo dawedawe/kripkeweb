@@ -11,6 +11,7 @@ module FormulaSchemes
 , lambdaOredDiamonded
 , lambdaOredDiamondedNegated
 , lambdaOredNegated
+, tfidfsCuttedOred
 ) where
 
 import Data.Maybe (catMaybes)
@@ -20,6 +21,16 @@ import qualified Data.Text as T
 import DB
 import KripkeTypes
 import Logic
+import Tfidf
+import Util
+
+-- |Ored tfidfs of all worlds with some of the highest and lowest ones dropped.
+tfidfsCuttedOred :: Connection -> LambdaType -> Int -> IO [Fml]
+tfidfsCuttedOred c lamType pcnt = do
+    allTs  <- allTfidf c lamType
+    let ws = map (dropFirstAndLastXPercent pcnt . map fst . snd) allTs
+    let fmls = map (formulasToJunction Or) ws
+    return (catMaybes fmls)
 
 -- |Lambda sets of all worlds as list of conjunctions.
 lambdaAnded :: Connection -> LambdaType -> IO [Fml]
