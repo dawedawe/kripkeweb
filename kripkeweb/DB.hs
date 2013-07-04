@@ -61,7 +61,7 @@ import GHC.Int
 import NLP.Snowball
 
 import KripkeTypes
-import Util
+import Relation
 
 -- see: https://github.com/lpsmith/postgresql-simple/issues/65
 newtype TableName = TableName BS.ByteString 

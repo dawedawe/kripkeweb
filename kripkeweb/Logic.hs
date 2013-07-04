@@ -30,6 +30,7 @@ import Database.PostgreSQL.Simple
 import DB
 import KripkeTypes
 import Model
+import Relation
 import Util
 
 -- |Check if x is true in ... Look up needed information in the database.

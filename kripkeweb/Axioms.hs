@@ -5,16 +5,14 @@ module Axioms
 , reflSymTransSubFrames
 ) where
 
-import Control.Monad (liftM)
 import qualified Data.List as L
 import qualified Data.Set as S
-import qualified Data.Text as T
 import Database.PostgreSQL.Simple
 
 import DB
 import KripkeTypes
 import Logic
-import Util
+import Relation
 
 -- |Reflexive (T) and symmetric (B) subframe of (W, R).
 reflSymSubFrame :: Connection -> IO Frame
@@ -95,47 +93,47 @@ dropDuplicates = map S.toList . L.nub . map S.fromList
 
 -- |Test if K (smallest modal logic): [](p -> q) -> ([]p -> []q) holds in the
 -- given frame.
-isK :: Connection -> LambdaType -> Frame -> MLFml -> MLFml -> IO Bool
-isK c lamType frm p@(MLVar _) q@(MLVar _) = do
-    let prem = Box (MLImp p q)
-    let conc = MLImp (Box p) (Box q)
-    let fml  = MLImp prem conc
+isK :: Connection -> LambdaType -> Frame -> Fml -> Fml -> IO Bool
+isK c lamType frm p@(Var _) q@(Var _) = do
+    let prem = Box (Imp p q)
+    let conc = Imp (Box p) (Box q)
+    let fml  = Imp prem conc
     isFUniversallyTrue c lamType frm fml
 isK _ _       _   _           _           = error "isBigK: undefined parameters"
 
 -- |Test if T (reflexive): p -> <>p  (alt: []p -> p) holds in the given frame.
-isT :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
-isT c lamType frm p@(MLVar _) =
-    let fml = MLImp p (Diamond p)
+isT :: Connection -> LambdaType -> Frame -> Fml -> IO Bool
+isT c lamType frm p@(Var _) =
+    let fml = Imp p (Diamond p)
     in  isFUniversallyTrue c lamType frm fml
 isT _ _       _   _           = error "isBigT: undefined parameters"
 
 -- |Test if D (seriell): []p -> <>p All w: Ex v:(wRv) holds in the whole
 -- database model.
-isD :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
-isD c lamType frm p@(MLVar _) =
-    let fml = MLImp (Box p) (Diamond p)
+isD :: Connection -> LambdaType -> Frame -> Fml -> IO Bool
+isD c lamType frm p@(Var _) =
+    let fml = Imp (Box p) (Diamond p)
     in  isFUniversallyTrue c lamType frm fml
 isD _ _       _   _           = error "isBigD: undefined parameters"
 
 -- |Test if B (symmetric): p -> []<>p holds in the given frame.
-isB :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
-isB c lamType frm p@(MLVar _) =
-    let fml = MLImp p (Box (Diamond p))
+isB :: Connection -> LambdaType -> Frame -> Fml -> IO Bool
+isB c lamType frm p@(Var _) =
+    let fml = Imp p (Box (Diamond p))
     in  isFTrueInWorlds c lamType frm fml (wSet frm)
 isB _ _       _   _           = error "isBigB: undefined parameters"
 
 -- |Test if 4 (transitive): <><>p -> <>p (alt: []p -> [][]p) holds in the given
 -- frame.
-is4 :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
-is4 c lamType frm p@(MLVar _) =
-    let fml = MLImp (Diamond (Diamond p)) (Diamond p)
+is4 :: Connection -> LambdaType -> Frame -> Fml -> IO Bool
+is4 c lamType frm p@(Var _) =
+    let fml = Imp (Diamond (Diamond p)) (Diamond p)
     in  isFTrueInWorlds c lamType frm fml (wSet frm)
 is4 _ _       _   _           = error "isBig4: undefined parameters"
 
 -- |Test if 5 (euclidean): <>p -> []<>p holds in given frame.
-is5 :: Connection -> LambdaType -> Frame -> MLFml -> IO Bool
-is5 c lamType frm p@(MLVar _) =
-    let fml = MLImp (Diamond p) (Box (Diamond p))
+is5 :: Connection -> LambdaType -> Frame -> Fml -> IO Bool
+is5 c lamType frm p@(Var _) =
+    let fml = Imp (Diamond p) (Box (Diamond p))
     in  isFTrueInWorlds c lamType frm fml (wSet frm)
 is5 _ _       _   _           = error "isBig5: undefined parameters"
