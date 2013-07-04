@@ -13,10 +13,10 @@ import Database.PostgreSQL.Simple
 import System.Random
 
 import DB
+import FormulaSchemes
 import KripkeTypes
 import Logic
-import FormulaSchemes
-import Util
+import Relation
 
 data SpacePnt = SpacePnt { name     :: T.Text
                          , position :: [Bool]
