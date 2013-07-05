@@ -17,8 +17,8 @@ import Util (hasLetters, lowerString)
 
 -- |Parse all acceptable inner text out of the given tags.
 parseBody :: [Tag String] -> [String]
-parseBody tgs =
-    (filterFormulas . map lowerString . tokenize . innerText . filterScript) tgs
+parseBody =
+    filterFormulas . map lowerString . tokenize . innerText . filterScript
 
 -- |Try to parse HTML lang attribute.
 parseLang :: [Tag String] -> Maybe String
