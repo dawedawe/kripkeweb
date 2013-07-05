@@ -4,12 +4,13 @@ module Util
 ( dropFirstAndLastXPercent
 , eqListElems
 , hasLetters
+, isSoundExHash
 , lowerString
 , trim
 , unquote
 ) where
 
-import Data.Char (isLetter, isSpace, toLower)
+import Data.Char (isDigit, isLetter, isSpace, toLower)
 import qualified Data.Set as S
 
 -- |Transform a String to a lower case version.
@@ -56,4 +57,10 @@ dropLastXPercent p xs = reverse $ dropFirstXPercent p (reverse xs)
 -- |Convert p to p / 100.
 toPercent :: Int -> Double
 toPercent p = fromIntegral p / 100
+
+-- |True if String is a valid SoundEx Hash.
+isSoundExHash :: String -> Bool
+isSoundExHash (c:x:y:z:[]) =
+    c `elem` ['A' .. 'Z'] && isDigit x && isDigit y && isDigit z
+isSoundExHash _            = False
 

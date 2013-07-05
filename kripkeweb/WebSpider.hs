@@ -25,7 +25,7 @@ import Text.PhoneticCode.Soundex (soundexNARA)
 
 import Conf (Proxy)
 import KripkeTypes
-import Util (hasLetters, lowerString)
+import Util (hasLetters, isSoundExHash, lowerString)
 import WebParser
 
 -- |Wrapper for Link to make it a non-orphan instance of Ord, needed for Set
@@ -217,8 +217,7 @@ getLambdaRels :: Maybe Proxy -> T.Text -> IO (LambdaRels, Maybe Algorithm)
 getLambdaRels prx url = do
     tgs         <- getTags prx (T.unpack url)
     let mtaFmls = parseMain tgs
-    let bdyFmls = (filterFormulas . map lowerString .
-                  tokenize . innerText . filterScript) tgs
+    let bdyFmls = parseBody tgs
     return (constructLambdaRels url tgs mtaFmls bdyFmls)
 
 constructLambdaRels :: T.Text -> [Tag String] -> [String] -> [String] ->

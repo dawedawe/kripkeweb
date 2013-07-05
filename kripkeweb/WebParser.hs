@@ -1,8 +1,11 @@
 module WebParser
+( langAttr2StemAlgo
+, parseBody
+, parseLang
+, parseMain
+, tld2StemAlgo
+) where
 
-where
-
-import Data.Char (isDigit)
 import Data.List (intersect, isSuffixOf)
 import Data.List.Utils (replace)
 import Data.Maybe (mapMaybe)
@@ -11,6 +14,11 @@ import NLP.Snowball
 import Text.HTML.TagSoup
 
 import Util (hasLetters, lowerString)
+
+-- |Parse all acceptable inner text out of the given tags.
+parseBody :: [Tag String] -> [String]
+parseBody tgs =
+    (filterFormulas . map lowerString . tokenize . innerText . filterScript) tgs
 
 -- |Try to parse HTML lang attribute.
 parseLang :: [Tag String] -> Maybe String
@@ -255,10 +263,4 @@ dropTillScriptEnd :: [Tag String] -> [Tag String]
 dropTillScriptEnd xs =
     let xs' = dropWhile (/= TagClose "script") xs
     in  if null xs' then xs' else tail xs'
-
--- |True if String is a valid SoundEx Hash.
-isSoundExHash :: String -> Bool
-isSoundExHash (c:x:y:z:[]) =
-    c `elem` ['A' .. 'Z'] && isDigit x && isDigit y && isDigit z
-isSoundExHash _            = False
 
