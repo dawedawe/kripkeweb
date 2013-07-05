@@ -18,14 +18,13 @@ import qualified Data.Set as S
 import qualified Data.Text as T (Text, append, init, isSuffixOf, pack, unpack)
 import Network.Curl.Opts
 import Network.Shpider
-import NLP.Tokenize (tokenize)
 import NLP.Snowball
 import Text.HTML.TagSoup
 import Text.PhoneticCode.Soundex (soundexNARA)
 
 import Conf (Proxy)
 import KripkeTypes
-import Util (hasLetters, isSoundExHash, lowerString)
+import Util (isSoundExHash)
 import WebParser
 
 -- |Wrapper for Link to make it a non-orphan instance of Ord, needed for Set
