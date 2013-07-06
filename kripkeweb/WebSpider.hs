@@ -190,8 +190,8 @@ setMaybeaToSeta = S.map fromJust . S.delete Nothing
 getPage :: Maybe Proxy -> String -> IO Page
 getPage prx url =
     runShpider $ do
-      setCurlOpts [CurlTimeout 20, CurlFollowLocation True,
-        CurlUserAgent userAgent]
+      setCurlOpts [CurlTimeout 20, CurlFollowLocation True]
+        --CurlUserAgent userAgent]
       when (isJust prx) $ do
         let prx' = fromJust prx
         addCurlOpts [CurlProxy (fst prx'), CurlProxyPort (snd prx'),
@@ -215,7 +215,10 @@ getTags prx url = getPage prx url >>= \p -> return ((canonicalizeTags . tags) p)
 getLambdaRels :: Maybe Proxy -> T.Text -> IO (LambdaRels, Maybe Algorithm)
 getLambdaRels prx url = do
     tgs         <- getTags prx (T.unpack url)
-    let mtaFmls = parseMain tgs
+    feedtgs     <- case parseFeedLink tgs of
+                     Just u -> getTags prx u
+                     _      -> return []
+    let mtaFmls = parseMain (tgs ++ feedtgs)
     let bdyFmls = parseBody tgs
     return (constructLambdaRels url tgs mtaFmls bdyFmls)
 

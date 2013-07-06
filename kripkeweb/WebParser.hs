@@ -1,14 +1,18 @@
 module WebParser
 ( langAttr2StemAlgo
 , parseBody
+, parseFeedLink
+, parseHeadlines
 , parseLang
 , parseMain
+, parseMeta
+, parseTitles
 , tld2StemAlgo
 ) where
 
 import Data.List (intersect, isSuffixOf)
 import Data.List.Utils (replace)
-import Data.Maybe (mapMaybe)
+import Data.Maybe (isJust, mapMaybe)
 import NLP.Tokenize (tokenize)
 import NLP.Snowball
 import Text.HTML.TagSoup
@@ -36,7 +40,7 @@ parseMain :: [Tag String] -> [String]
 parseMain tgs =
     let
       mtgs = parseMeta tgs
-      ttgs = parseTitle tgs
+      ttgs = parseTitles tgs
       htgs = parseHeadlines tgs
     in
       concat [mtgs, ttgs, htgs]
@@ -66,23 +70,21 @@ parseMeta tgs =
     in
       (filterFormulas . map lowerString . concatMap tokenize) metaWords
 
--- |Get the content attribute value ouf of the first tag in the given list if
--- it's there.
+-- |Helper for parseMeta. Get the content attribute value ouf of the first tag
+-- in the given list if it's there.
 getFirstTagContentAttrib :: [Tag String] -> String
 getFirstTagContentAttrib []    = ""
 getFirstTagContentAttrib (x:_) = fromAttrib "content" x
 
--- |Parse the webpage title ouf of the <title> tag.
-parseTitle :: [Tag String] -> [String]
-parseTitle tgs =
-    let tTag  = sections (~== ("<title>" :: String)) tgs
-    in  if tTag /= [] && length (head tTag) > 0
-          then case head tTag of
-                 TagOpen "title" _ : TagText x : _ ->
-                   (filterFormulas . map lowerString . concatMap tokenize)
-                     (words x)
-                 _                                 -> []
-          else []
+-- |Parse all <title> tags.
+parseTitles :: [Tag String] -> [String]
+parseTitles tgs =
+    let
+      titleParts = partitions (~== ("<title>" :: String)) tgs
+      titles     = mapMaybe (maybeTagText . (!! 1)) titleParts
+    in
+      (filterFormulas . map lowerString . concatMap tokenize)
+        (concatMap words titles)
 
 -- |Parse and postprocess data out of hx tags.
 parseHeadlines :: [Tag String] -> [String]
@@ -105,6 +107,32 @@ parseHx hx tgs =
       case tgs' of
         TagText txt : _ -> Just txt
         _               -> Nothing
+
+-- |Parse the atom/rss feed links. Prefer atom.
+parseFeedLink :: [Tag String] -> Maybe String
+parseFeedLink tgs =
+    let
+      link = "link" :: String
+      atom = sections (~== TagOpen link
+               [("rel", "alternate"), ("type", "application/atom+xml")]) tgs
+      rss  = sections (~== TagOpen link
+               [("rel", "alternate"), ("type", "application/rss+xml")]) tgs
+      alink = getFirstTagHrefAttrib atom
+      rlink = getFirstTagHrefAttrib rss
+    in
+      if isJust alink
+        then alink
+        else rlink
+
+-- |Helper for parseFeedLink. Get the href attribute value ouf of the first tag
+-- in the given list if it's there.
+getFirstTagHrefAttrib :: [[Tag String]] -> Maybe String
+getFirstTagHrefAttrib []    = Nothing
+getFirstTagHrefAttrib (x:_) =
+    let attr = fromAttrib "href" (head x)
+    in  if attr == ""
+          then Nothing
+          else Just attr
 
 -- |HTML lang attribute to Snowball stemming Algorithm.
 langAttr2StemAlgo :: String -> Maybe Algorithm
