@@ -10,6 +10,7 @@ module Relation
 , relsStartingIn'
 , relsStartingWith'
 , targetsOf'
+, unreflRelCountAmongWorlds
 ) where
 
 import qualified Data.List as L
@@ -70,9 +71,15 @@ dropOverlappingPairs ((x1, x2):xs) =
     in
       (x1, x2) : dropOverlappingPairs ps
 
--- |Count of rrelations between elements in the given list.
+-- |Count of relations between elements in the given list.
 relCountAmongWorlds :: (Eq a) => [(a, a)] -> [a] -> Int
 relCountAmongWorlds rel ws =
     length $ filter (\(s, t) -> s `elem` ws && t `elem` ws) rel
+
+-- |Count of relations between elements in the given list, not counting
+-- reflexive ones.
+unreflRelCountAmongWorlds :: (Eq a) => [(a, a)] -> [a] -> Int
+unreflRelCountAmongWorlds rel ws =
+    length $ filter (\(s, t) -> s `elem` ws && t `elem` ws && s /= t) rel
 
 
