@@ -382,12 +382,12 @@ edgesInDigraphClique n = n * (n - 1)
 -- |Links in a cluster / edge count of a digraph clique.
 cliqueness :: Frame -> Cluster -> Maybe Double
 cliqueness _           []      = Nothing
+cliqueness _           [w]     = Just 1.0
 cliqueness (Frame _ r) cluster =
     let
       ws = map name cluster
-      n  = length ws
-      t  = edgesInDigraphClique n
-      lc = relCountAmongWorlds (S.toList r) ws
+      es = edgesInDigraphClique (length ws)
+      lc = unreflRelCountAmongWorlds (S.toList r) ws
     in
-      Just (fromIntegral lc / fromIntegral t)
+      Just (fromIntegral lc / fromIntegral es)
 
