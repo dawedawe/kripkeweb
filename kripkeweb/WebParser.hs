@@ -4,6 +4,7 @@ module WebParser
 , parseFeedLink
 , parseHeadlines
 , parseLang
+, parseLinkTexts
 , parseMain
 , parseMeta
 , parseTitles
@@ -13,6 +14,7 @@ module WebParser
 import Data.List (intersect, isSuffixOf)
 import Data.List.Utils (replace)
 import Data.Maybe (isJust, mapMaybe)
+import Network.Shpider (gatherLinks, linkText)
 import NLP.Tokenize (tokenize)
 import NLP.Snowball
 import Text.HTML.TagSoup
@@ -35,15 +37,16 @@ parseLang t@(TagOpen "html" _ : _) =
 parseLang (_:xs)                   = parseLang xs
 parseLang []                       = Nothing
 
--- |Parse the meta, title and hx tags as the main information of a page.
+-- |Parse the meta, title, hx and href tags as the main information of a page.
 parseMain :: [Tag String] -> [String]
 parseMain tgs =
     let
       mtgs = parseMeta tgs
       ttgs = parseTitles tgs
       htgs = parseHeadlines tgs
+      ltgs = parseLinkTexts tgs
     in
-      concat [mtgs, ttgs, htgs]
+      concat [mtgs, ttgs, htgs, ltgs]
 
 -- |Parse the meta description and keywords out of the tags.
 parseMeta :: [Tag String] -> [String]
@@ -133,6 +136,12 @@ getFirstTagHrefAttrib (x:_) =
     in  if attr == ""
           then Nothing
           else Just attr
+
+-- |Parse the link texts out of all links.
+parseLinkTexts :: [Tag String] -> [String]
+parseLinkTexts tgs =
+    let lnkTexts = map linkText (gatherLinks tgs)
+    in  (filterFormulas . map lowerString . concatMap tokenize) lnkTexts
 
 -- |HTML lang attribute to Snowball stemming Algorithm.
 langAttr2StemAlgo :: String -> Maybe Algorithm
