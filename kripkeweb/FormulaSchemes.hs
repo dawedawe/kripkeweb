@@ -12,6 +12,7 @@ module FormulaSchemes
 , lambdaOredDiamondedNegated
 , lambdaOredNegated
 , tfidfsCuttedOred
+, tfidfsTopXOred
 ) where
 
 import Data.Maybe (catMaybes)
@@ -29,6 +30,13 @@ tfidfsCuttedOred :: Connection -> LambdaType -> Int -> IO [Fml]
 tfidfsCuttedOred c lamType pcnt = do
     allTs  <- allTfidf c lamType
     let ws = map (dropFirstAndLastXPercent pcnt . map fst . snd) allTs
+    let fmls = map (formulasToJunction Or) ws
+    return (catMaybes fmls)
+
+tfidfsTopXOred :: Connection -> LambdaType -> Int -> IO [Fml]
+tfidfsTopXOred c lamType pcnt= do
+    allTs  <- allTfidf c lamType
+    let ws = map (keepFirstXPercent pcnt . map fst . snd) allTs
     let fmls = map (formulasToJunction Or) ws
     return (catMaybes fmls)
 
