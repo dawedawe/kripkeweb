@@ -6,7 +6,9 @@ module Relation
 , flattenTuples
 , flattenTupleSet
 , hasTransViolation
+, inlinkWorldsOf
 , relCountAmongWorlds
+, relsEndingWith
 , relsStartingIn'
 , relsStartingWith'
 , targetsOf'
@@ -44,6 +46,14 @@ targetsOf' rels w = map snd (relsStartingWith' rels w)
 -- |Pure version of relsStartingIn.
 relsStartingIn' :: (Eq a) => [(a, a)] -> [a] -> [(a, a)]
 relsStartingIn' rels tgs = filter ((`elem` tgs) . fst) rels
+
+-- |Relations ending with given element.
+relsEndingWith :: (Eq a) => [(a, a)] -> a -> [(a, a)]
+relsEndingWith rels w = filter (\(x, y) -> y == w) rels
+
+-- |Elements pointing at given element.
+inlinkWorldsOf :: (Eq a) => [(a, a)] -> a -> [a]
+inlinkWorldsOf rels w = map fst (relsEndingWith rels w)
 
 -- |True, if not all targets of targets of w can be reached directly from w.
 hasTransViolation :: (Eq a) => [(a, a)] -> a -> Bool
