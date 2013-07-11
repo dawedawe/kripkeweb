@@ -24,7 +24,7 @@ import Text.PhoneticCode.Soundex (soundexNARA)
 
 import Conf (Proxy)
 import KripkeTypes
-import Util (isSoundExHash)
+import Util (isAbsoluteHttpUrl, isSoundExHash)
 import WebParser
 
 -- |Wrapper for Link to make it a non-orphan instance of Ord, needed for Set
@@ -168,11 +168,6 @@ filterAbsHttpLinks = S.filter isAbsoluteHttpUrl . validLinks2URLs
 validLinks2URLs :: S.Set MyLink -> S.Set URL
 validLinks2URLs = setMaybeaToSeta . S.map (importURL . linkAddress . myLink)
 
--- |True, if URL is Absolute and the protocol is HTTP, otherwise False
-isAbsoluteHttpUrl :: URL -> Bool
-isAbsoluteHttpUrl (URL (Absolute (Host (HTTP _) _ _)) _ _) = True
-isAbsoluteHttpUrl _                                        = False
-
 -- |Try to parse an URL to an Absolute Host.
 urlToHost :: URL -> Maybe Host
 urlToHost (URL (Absolute h) _ _) = Just h
@@ -215,7 +210,7 @@ getTags prx url = getPage prx url >>= \p -> return ((canonicalizeTags . tags) p)
 getLambdaRels :: Maybe Proxy -> T.Text -> IO (LambdaRels, Maybe Algorithm)
 getLambdaRels prx url = do
     tgs         <- getTags prx (T.unpack url)
-    feedtgs     <- case parseFeedLink tgs of
+    feedtgs     <- case parseFeedLink (T.unpack url) tgs of
                      Just u -> getTags prx u
                      _      -> return []
     let mtaFmls = parseMain (tgs ++ feedtgs)
