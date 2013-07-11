@@ -115,7 +115,7 @@ kMeans mdl@(Model (Frame w _) _) fmls k = do
     let wk     = zip wPoses hOfx
     let clusters =
           [map fst c | i <- [0..(k - 1)], let c = filter ((== i) . snd) wk]
-    return (kMeansLoop clusters centroids k 1)
+    return (kMeansLoop clusters centroids k 4)
 
 -- |Looping function for kMeans, ends when centroids stop moving or after i
 -- loops.
@@ -260,7 +260,7 @@ avgClusterDisim mdl clusters
 
 -- |Lowest acceptable cluster similarity in decision to split or not to split
 minClusterSimilarity :: Double
-minClusterSimilarity = 0.2
+minClusterSimilarity = 0.01
 
 -- |Lowest acceptable cluster disimilarity in decision to merge or not to merge
 minClusterDisimilarity :: Double
