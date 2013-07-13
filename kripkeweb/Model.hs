@@ -7,11 +7,12 @@ module Model
 , termAsLamType
 ) where
 
+import Control.Exception
 import Control.Monad (when)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Database.PostgreSQL.Simple
-import NLP.Snowball (Algorithm, stem)
+import NLP.Snowball (stem)
 import Text.PhoneticCode.Soundex (soundexNARA)
 
 import Conf
@@ -25,26 +26,28 @@ lambda = worldFormulas
 
 -- |Fetch meta/body - raw/stemmed/sonudexed formulas via the given function of
 -- a single url and store them.
-getAndStoreLambdaRel :: Connection ->
-                        (T.Text -> IO (LambdaRels, Maybe Algorithm)) ->
-                        T.Text -> IO ()
-getAndStoreLambdaRel c func url = do
-    (LambdaRels mrf msf mef brf bsf bef, sa) <- func url
-    insertLambdaRelation c MtaRaw mrf
-    insertLambdaRelation c MtaStem msf
-    insertLambdaRelation c MtaSoundex mef
-    insertLambdaRelation c BdyRaw brf
-    insertLambdaRelation c BdyStem bsf
-    insertLambdaRelation c BdySoundex bef
+getAndStoreLambdaRel :: Connection -> Maybe Proxy -> T.Text -> IO ()
+getAndStoreLambdaRel c prx url = do
+    (LambdaRels mrf msf mef brf bsf bef, sa) <- getLambdaRels prx url
+    handle (sqlErrorHandler url) (insertLambdaRelation c MtaRaw mrf)
+    handle (sqlErrorHandler url) (insertLambdaRelation c MtaStem msf)
+    handle (sqlErrorHandler url) (insertLambdaRelation c MtaSoundex mef)
+    handle (sqlErrorHandler url) (insertLambdaRelation c BdyRaw brf)
+    handle (sqlErrorHandler url) (insertLambdaRelation c BdyStem bsf)
+    handle (sqlErrorHandler url) (insertLambdaRelation c BdySoundex bef)
     when (nTuples bsf /= S.empty || nTuples msf /= S.empty) $
       insertStemLang c url sa
 
+sqlErrorHandler :: T.Text -> SqlError -> IO ()
+sqlErrorHandler url e = do
+    putStrLn ("insertLambdaRelation failed for " ++ T.unpack url)
+    print e
+
 -- |Apply getAndStoreLambdaRel to all sources in links.
-buildLambdaStore :: Connection ->
-                    (T.Text -> IO (LambdaRels, Maybe Algorithm)) -> IO ()
-buildLambdaStore c func = do
+buildLambdaStore :: Connection -> Maybe Proxy -> IO ()
+buildLambdaStore c prx = do
     worlds <- worldsInLinks c
-    mapM_ (getAndStoreLambdaRel c func) worlds
+    mapM_ (getAndStoreLambdaRel c prx) worlds
     close c
 
 -- |Build and store the Accessability Relation starting at an url with a given

@@ -43,7 +43,7 @@ main = do
         c (proxy conf) (optUrl (opts conf)) (optRecDepth (opts conf))
 
     when (BuildLambdaRel `S.member` optFlags (opts conf)) $
-      buildLambdaStore c (getLambdaRels (proxy conf))
+      buildLambdaStore c (proxy conf)
 
     when (CalcPageRank `S.member` optFlags (opts conf)) $
       calcAndUpdatePageRanks c (optPgIters (opts conf))
