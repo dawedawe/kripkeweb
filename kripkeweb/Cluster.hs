@@ -385,7 +385,7 @@ edgesInDigraphClique n = n * (n - 1)
 -- |Links in a cluster / edge count of a digraph clique.
 cliqueness :: Frame -> Cluster -> Maybe Double
 cliqueness _           []      = Nothing
-cliqueness _           [w]     = Just 1.0
+cliqueness _           [_]     = Just 1.0
 cliqueness (Frame _ r) cluster =
     let
       ws = map name cluster
