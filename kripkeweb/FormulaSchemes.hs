@@ -13,6 +13,7 @@ module FormulaSchemes
 , lambdaOredNegated
 , tfidfsCuttedOred
 , tfidfsTopXOred
+, tfidfsTopXOredDiamonded
 ) where
 
 import Data.Maybe (catMaybes)
@@ -27,18 +28,25 @@ import Util
 
 -- |Ored tfidfs of all worlds with some of the highest and lowest ones dropped.
 tfidfsCuttedOred :: Connection -> LambdaType -> Int -> IO [Fml]
-tfidfsCuttedOred c lamType pcnt = do
+tfidfsCuttedOred c lamType prcnt = do
     allTs  <- allTfidf c lamType
-    let ws = map (dropFirstAndLastXPercent pcnt . map fst . snd) allTs
+    let ws = map (dropFirstAndLastXPercent prcnt . map fst . snd) allTs
     let fmls = map (formulasToJunction Or) ws
     return (catMaybes fmls)
 
+-- |The top X percent of each world's tfidf sorted formulas ored together.
 tfidfsTopXOred :: Connection -> LambdaType -> Int -> IO [Fml]
-tfidfsTopXOred c lamType pcnt= do
+tfidfsTopXOred c lamType prcnt = do
     allTs  <- allTfidf c lamType
-    let ws = map (keepFirstXPercent pcnt . map fst . snd) allTs
+    let ws = map (keepFirstXPercent prcnt . map fst . snd) allTs
     let fmls = map (formulasToJunction Or) ws
     return (catMaybes fmls)
+
+-- |Like the formulas from tfidfsTopXOred, but each diamonded.
+tfidfsTopXOredDiamonded :: Connection -> LambdaType -> Int -> IO [Fml]
+tfidfsTopXOredDiamonded c lamType prcnt = do
+    fmls <- tfidfsTopXOred c lamType prcnt
+    return (map Diamond fmls)
 
 -- |Lambda sets of all worlds as list of conjunctions.
 lambdaAnded :: Connection -> LambdaType -> IO [Fml]

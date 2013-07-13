@@ -6,13 +6,15 @@ module Relation
 , flattenTuples
 , flattenTupleSet
 , hasTransViolation
-, inlinkWorldsOf
+, sourcesOf'
 , relCountAmongWorlds
 , relsEndingWith
 , relsStartingIn'
 , relsStartingWith'
 , targetsOf'
+, unreflSourcesOf
 , unreflRelCountAmongWorlds
+, unreflTargetsOf
 ) where
 
 import qualified Data.List as L
@@ -39,9 +41,17 @@ flattenTupleSet xs = S.unions (map (\(x, y) -> S.fromList [x, y]) (S.toList xs))
 relsStartingWith' :: (Eq a) => [(a, a)] -> a -> [(a, a)]
 relsStartingWith' rels w = filter ((== w) . fst) rels
 
+-- |Pure version of relsStartingWith.
+unreflRelsStartingWith :: (Eq a) => [(a, a)] -> a -> [(a, a)]
+unreflRelsStartingWith rels w = filter (\(x, y) -> x == w && y /= w) rels
+
 -- |Pure version of targetsOf
 targetsOf' :: (Eq a) => [(a, a)] -> a -> [a]
 targetsOf' rels w = map snd (relsStartingWith' rels w)
+
+-- |Pure version of targetsOf, without reflexive relations.
+unreflTargetsOf :: (Eq a) => [(a, a)] -> a -> [a]
+unreflTargetsOf rels w = map snd (unreflRelsStartingWith rels w)
 
 -- |Pure version of relsStartingIn.
 relsStartingIn' :: (Eq a) => [(a, a)] -> [a] -> [(a, a)]
@@ -49,11 +59,19 @@ relsStartingIn' rels tgs = filter ((`elem` tgs) . fst) rels
 
 -- |Relations ending with given element.
 relsEndingWith :: (Eq a) => [(a, a)] -> a -> [(a, a)]
-relsEndingWith rels w = filter (\(x, y) -> y == w) rels
+relsEndingWith rels w = filter (\(_, y) -> y == w) rels
+
+-- |Relations ending with given element, without reflexive relations.
+unreflRelsEndingWith :: (Eq a) => [(a, a)] -> a -> [(a, a)]
+unreflRelsEndingWith rels w = filter (\(x, y) -> y == w && x /= w) rels
 
 -- |Elements pointing at given element.
-inlinkWorldsOf :: (Eq a) => [(a, a)] -> a -> [a]
-inlinkWorldsOf rels w = map fst (relsEndingWith rels w)
+sourcesOf' :: (Eq a) => [(a, a)] -> a -> [a]
+sourcesOf' rels w = map fst (relsEndingWith rels w)
+
+-- |Elements pointing at given element, without reflexive relations.
+unreflSourcesOf :: (Eq a) => [(a, a)] -> a -> [a]
+unreflSourcesOf rels w = map fst (unreflRelsEndingWith rels w)
 
 -- |True, if not all targets of targets of w can be reached directly from w.
 hasTransViolation :: (Eq a) => [(a, a)] -> a -> Bool
