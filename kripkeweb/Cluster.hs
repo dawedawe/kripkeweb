@@ -1,7 +1,10 @@
 module Cluster
-( boolsDist
+( SpacePnt (..)
+, boolsDist
+, disimilarity
 , fmlSpacePos
 , fmlSpacePoses
+, similarity
 ) where
 
 import qualified Data.List as L
@@ -341,7 +344,7 @@ data ClusterStats = ClusterStats
 instance Show ClusterStats where
     show cs =
       "size = " ++ show (clusterSize cs) ++
-      " similariy = " ++ show (clusterStatSim cs) ++
+      " similarity = " ++ show (clusterStatSim cs) ++
       " cliqueness = " ++ show (cliquenessStat cs)
 
 -- |Print the stats of all given clusers and the avgClusterSim, avgClusterDisim
