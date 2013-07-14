@@ -38,7 +38,7 @@ reflTransSubFrames c = do
     let rtFrames   = [Frame (flattenTupleSet r) r | r <- S.toList reflTransR]
     return (S.fromList [Frame w (addRefls r) | (Frame w r) <- rtFrames])
 
--- |Symmetric (4) and transitive (4) subframes of (W, R).
+-- |Symmetric (B) and transitive (4) subframes of (W, R).
 symTransSubFrames :: Connection -> IO (S.Set Frame)
 symTransSubFrames c = do
     syms  <- symSubFrame c
