@@ -1,5 +1,6 @@
 module Relation
-( dropRelsWithElemIn
+( containsTransRel
+, dropRelsWithElemIn
 , dropRelsWithElemInS
 , dropTransViolations
 , dropOverlappingPairs
@@ -89,6 +90,21 @@ dropTransViolations :: (Eq a) => [(a, a)] -> [(a, a)]
 dropTransViolations rels = 
     let vs = filter (hasTransViolation rels) (flattenTuples rels)
     in  dropRelsWithElemIn vs rels
+
+-- |True, if given relations contain at least one transitive relation.
+containsTransRel :: (Eq a, Ord a) => [(a, a)] -> Bool
+containsTransRel rels = any (hasTransRelation rels) (flattenTuples rels)
+
+-- |True, if given element has a transitive relation in the given relations.
+hasTransRelation :: (Eq a, Ord a) => [(a, a)] -> a -> Bool
+hasTransRelation rels w =
+    let
+      tgsOfw   = targetsOf' rels w
+      tgsOfTgs = concatMap (targetsOf' rels) tgsOfw
+      interS   = tgsOfw `L.intersect` tgsOfTgs
+    in
+      tgsOfw /= [] && tgsOfTgs /= [] && interS /= [] &&
+      S.fromList interS `S.isSubsetOf` S.fromList tgsOfw
 
 -- |Drop additional pairs in the list that share an element.
 dropOverlappingPairs :: (Eq a) => [(a, a)] -> [(a, a)]
