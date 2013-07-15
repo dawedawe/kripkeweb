@@ -470,21 +470,27 @@ transSubFrames c = do
                r <- tRels, let rworlds = flattenTuples r, length rworlds > 2]
     return (S.fromList tF)
 
--- |Relations that form transitive relations with the given world.
+-- |Relations that form a real transitive relation with the given world.
 transRelsOf :: Connection -> T.Text -> IO [(T.Text, T.Text)]
 transRelsOf c w = do
     -- relations of w without a possible reflexive one
     relsOfw <- liftM (filter (/= (w, w))) (relsStartingWith c w)
-    let trgsOfw = map snd relsOfw
+    let trgsOfw       = map snd relsOfw
     -- relations of targets without backlinks to w and reflexives
     totRels <- liftM (filter (\(x, y) -> y /= w && x /= y))
                  (relsStartingIn c trgsOfw)
-    let tOft    = map snd totRels
-    if tOft `L.intersect` trgsOfw == tOft   -- w can reach targets of targets
-      -- drop possible transitive violations in transitive rels of w
-      then return (dropTransViolations (L.nub (relsOfw ++ totRels)))
+    let tOft          = map snd totRels
+    -- make sure w can reach targets of targets
+    let relsCandidate = if tOft `L.intersect` trgsOfw == tOft
+                    -- drop possible transitive violations not originating in w
+                    -- in transitive rels of w
+                    then dropTransViolations (L.nub (relsOfw ++ totRels))
+                    else []
+    -- make sure there's at least one actual transitive relation
+    if containsTransRel relsCandidate
+      then return relsCandidate
       else return []
- 
+
 --------------------------------------------------------------------------------
 -- functions for powerlaw analysis
 

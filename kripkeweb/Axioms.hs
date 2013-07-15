@@ -31,7 +31,8 @@ reflTransSubFrames c = do
     reflsF <- reflSubFrame c
     transF <- transSubFrames c
     -- both ends of a relation must be reflexive, filter out elems not in reflsF
-    let reflTransR = S.filter (/= S.empty)
+    -- and make sure the relation sets still contain a transitive relation
+    let reflTransR = S.filter (containsTransRel . S.toList)
                        (S.map (S.filter (pairIn (wSet reflsF)))
                        (S.map accRel transF))
     -- generate Frames with reflexive R-elements, then add reflexive rels
