@@ -1,5 +1,7 @@
 module Partition
-( hubsAndAuthorities
+( approxHnA
+, divideHubsAndAuthorities
+, hubsAndAuthorities
 , initAHpages
 ) where
 
@@ -20,10 +22,10 @@ data AHpage = AHpage { name :: T.Text
                      , hub  :: Double
                      } deriving (Eq, Show)
 
-approxHnA :: Connection -> LambdaType -> IO ([T.Text], [T.Text])
-approxHnA c lamType = do
+approxHnA :: Connection -> LambdaType -> Int -> IO ([T.Text], [T.Text])
+approxHnA c lamType prcnt = do
     mdl  <- dbModel c lamType
-    fmls <- tfidfsTopXOredDiamonded c lamType 9
+    fmls <- tfidfsTopXOredDiamonded c lamType prcnt
     let poss  = C.fmlSpacePoses mdl fmls (S.toList (wSet (frame mdl)))
     let auths = 
           filter (\(C.SpacePnt _ p) ->
