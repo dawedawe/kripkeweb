@@ -14,6 +14,7 @@ module DB
 , insertStemLang
 , lambdaAccum
 , linkCountAmongWorlds
+, linkCountBetweenWorldSets
 , myConn
 , negateLambaWorlds
 , outdegreeDistribution
