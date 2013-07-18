@@ -1,5 +1,6 @@
 module Relation
 ( containsTransRel
+, dropReflRels
 , dropRelsWithElemIn
 , dropRelsWithElemInS
 , dropTransViolations
@@ -126,4 +127,7 @@ unreflRelCountAmongWorlds :: (Eq a) => [(a, a)] -> [a] -> Int
 unreflRelCountAmongWorlds rel ws =
     length $ filter (\(s, t) -> s `elem` ws && t `elem` ws && s /= t) rel
 
+-- |Drop reflexive relations.
+dropReflRels :: (Eq a) => [(a, a)] -> [(a, a)]
+dropReflRels = filter (\(a, b) -> a /= b)
 
