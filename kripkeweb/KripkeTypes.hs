@@ -14,6 +14,7 @@ module KripkeTypes
 , lambdaPure
 , oToN2OneToOnes
 , oToNtuples2LambdaEntry
+, toUnreflModel
 ) where
 
 import Control.Applicative ((<$>), (<*>))
@@ -26,6 +27,7 @@ import Database.PostgreSQL.Simple.ToRow
 import Database.PostgreSQL.Simple.ToField
 import NLP.Snowball (Algorithm (..))
 
+import Relation (dropReflRels)
 import Util (unquote)
 
 -- |Type for a Kripke-Model.
@@ -59,6 +61,12 @@ data LambdaType = MtaRaw
 -- |Pure version of the lambda function.
 lambdaPure :: M.Map Text [Text] -> Text -> [Text]
 lambdaPure mp w = fromMaybe [] (M.lookup w mp)
+
+-- |Drop the reflexive relations in the model.
+toUnreflModel :: Model -> Model
+toUnreflModel (Model (Frame w r) l) =
+    let r' = S.fromList (dropReflRels (S.toList r))
+    in  Model (Frame w r') l
 
 --------------------------------------------------------------------------------
 -- Types for interaction with the database
