@@ -372,13 +372,15 @@ instance Show PLFml where
     show (PLImp x y)     = "(" ++ show x ++ " -> " ++ show y ++ ")"
 
 instance Show Fml where
-    show (Var x)         = show x
-    show (Not (Var x)) = "!(" ++ show x ++ ")"
-    show (Not x)         = '!' : show x
-    show (And x y)       = "(" ++ show x ++ " & " ++ show y ++ ")"
-    show (Or x y)        = "(" ++ show x ++ " | " ++ show y ++ ")"
-    show (Imp x y)       = "(" ++ show x ++ " -> " ++ show y ++ ")"
+    show (Var x)           = show x
+    show (Not (Var x))     = "!(" ++ show x ++ ")"
+    show (Not x)           = '!' : show x
+    show (And x y)         = "(" ++ show x ++ " & " ++ show y ++ ")"
+    show (Or x y)          = "(" ++ show x ++ " | " ++ show y ++ ")"
+    show (Imp x y)         = "(" ++ show x ++ " -> " ++ show y ++ ")"
+    show (Box (Var x))     = "[] " ++ show x
     show (Box x)           = "[]" ++ show x
+    show (Diamond (Var x)) = "<> " ++ show x
     show (Diamond x)       = "<>" ++ show x
 
 type Predicate = Connection -> LambdaType -> T.Text -> IO Bool
