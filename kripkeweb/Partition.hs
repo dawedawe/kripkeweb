@@ -5,8 +5,9 @@ module Partition
 , initAHpages
 ) where
 
+import Control.Monad (liftM)
 import Data.Function (on)
-import qualified Data.List as L ((\\), sortBy)
+import qualified Data.List as L ((\\), nub, sortBy)
 import qualified Data.Set  as S
 import qualified Data.Text as T
 import Database.PostgreSQL.Simple
@@ -15,13 +16,20 @@ import qualified Cluster as C
 import DB
 import FormulaSchemes
 import KripkeTypes
+import Logic
 import Relation
 
+--------------------------------------------------------------------------------
+-- Functions for hubs and authorities
+
+-- Type to help with the divideHubsAndAuthorities algorithm
 data AHpage = AHpage { name :: T.Text
                      , auth :: Double
                      , hub  :: Double
                      } deriving (Eq, Show)
 
+-- Approximate the hubs and authorities partitioning with
+-- tfidfsTopXOredDiamonded 
 approxHnA :: Connection -> LambdaType -> Int -> IO ([T.Text], [T.Text])
 approxHnA c lamType prcnt = do
     mdl  <- dbModel c lamType
@@ -33,6 +41,7 @@ approxHnA c lamType prcnt = do
     let hubs = poss L.\\ auths
     return (map C.name auths, map C.name hubs)
 
+-- Implementation of the kleinberg algorithm for hubs and authorities.
 divideHubsAndAuthorities :: Frame -> ([AHpage], [AHpage])
 divideHubsAndAuthorities frm@(Frame w _) =
     let
@@ -84,3 +93,33 @@ updateHubValue (Frame _ rels) bigG p =
       authSum  = sum $ map auth (filter (\x -> name x `elem` outLnkWs) bigG)
     in
       p { hub = authSum }
+
+--------------------------------------------------------------------------------
+-- functions for partitioning between worlds belonging to some community and
+-- loners
+
+communityAndLoners :: Connection -> LambdaType -> Int -> IO ([T.Text], [T.Text])
+communityAndLoners c lamType prcnt = do
+    fmls   <- atLeastOneSimilarAccWorld c lamType prcnt
+    mdl    <- dbModel c lamType
+    let comWs = (L.nub . concat) (map (satMWorlds (toUnreflModel mdl)) fmls)
+    let ws = S.toList (wSet (frame mdl))
+    return (comWs, ws L.\\ comWs)
+
+--------------------------------------------------------------------------------
+-- functions for partitioning stats
+
+trennschaerfe :: Connection -> [T.Text] -> [T.Text] -> IO Double
+trennschaerfe c aPart bPart = do
+    lc     <- linkCountBetweenWorldSets c aPart bPart
+    let me = maxEdgesBetweenBinPartition aPart bPart
+    return (1 - (fromIntegral lc) / (fromIntegral me))
+
+-- |Count of max possible edges between two distinct sets.
+maxEdgesBetweenBinPartition :: [a] -> [a] -> Int
+maxEdgesBetweenBinPartition aPart bPart = 2 * (length aPart) * (length bPart)
+
+linksPerWorldInPartition :: Connection -> [T.Text] -> IO Double
+linksPerWorldInPartition c part = do
+    plinks <- linkCountAmongWorlds c part
+    return (fromIntegral plinks / fromIntegral (length part))
