@@ -1,5 +1,6 @@
 module FormulaSchemes
-( lambdaAnded
+( atLeastOneSimilarAccWorld
+, lambdaAnded
 , lambdaAndedBoxed
 , lambdaAndedBoxedNegated
 , lambdaAndedDiamonded
@@ -25,6 +26,22 @@ import KripkeTypes
 import Logic
 import Tfidf
 import Util
+
+atLeastOneSimilarAccWorld :: Connection -> LambdaType -> Int -> IO [Fml]
+atLeastOneSimilarAccWorld c lamType prcnt = do
+    ws <- worldsInLinks c
+    ts <- mapM (worldsTopXPercentTfidf c lamType prcnt) ws
+    return (catMaybes (map atLeastOneSimilarAccWorldHelper ts))
+
+atLeastOneSimilarAccWorldHelper :: [T.Text] -> Maybe Fml
+atLeastOneSimilarAccWorldHelper fmls =
+    let
+      f1 = formulasToJunction And fmls
+      f2 = formulasToJunction Or fmls
+    in
+      case (f1, f2) of
+        (Just x, Just y) -> Just (And x (Diamond y))
+        _                -> Nothing
 
 -- |Ored tfidfs of all worlds with some of the highest and lowest ones dropped.
 tfidfsCuttedOred :: Connection -> LambdaType -> Int -> IO [Fml]
