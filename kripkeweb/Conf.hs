@@ -50,7 +50,8 @@ data Flag = BuildR              -- build accessability relation R
           | LambdaAccum         -- group and accumulate Lambda formulas
           | InLinkRings
           | OutLinkRings
-          | CalcPageRank
+          | CalcPageRank        -- calculate and store all pagerank scores
+          | CalcTfidf           -- calculate and store all tfidf scores
           | RSetLamdaPL
           | RSetLamdaList
           | RSetWorldsLamda
@@ -110,11 +111,15 @@ options = [
       (NoArg (\optns -> let f = optFlags optns
                         in  optns { optFlags = BuildLambdaRel `S.insert` f }))
       "build lambda relation"
+    , Option "" ["tfidfcalc"]
+      (NoArg (\optns -> let f = optFlags optns
+                        in  optns { optFlags   = CalcTfidf `S.insert` f}))
+      "calculate and store the tfidf scores"
     , Option "p" ["pagerankcalc"]
       (ReqArg (\i optns -> let f = optFlags optns
                            in  optns { optFlags   = CalcPageRank `S.insert` f,
                                        optPgIters = read i }) "ITERATONS")
-      "calculate the pagerank score"
+      "calculate and store the pagerank score"
     , Option "t" ["tfidf"]
       (ReqArg (\u optns -> let f = optFlags optns
                            in  optns { optFlags = TfidfWorld `S.insert` f,

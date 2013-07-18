@@ -32,11 +32,13 @@ module DB
 , transSubFrames
 , updateFmlCount
 , updatePageRank
+, updateTfidf
 , worldCountInLambda
 , worldFmlsAndCounts
 , worldFormulas
 , worldsInLambda
 , worldsInLinks
+, worldsTfidfDB
 , worldsWithFormula
 , worldsWithFmlSetIntersectWith
 , worldsWithFmlSetSubsetOf
@@ -258,6 +260,25 @@ worldCountInLambda c lamType =
       t = chooseLambdaTable lamType
     in
       liftM (fromOnly . head) (query c q (Only t))
+
+-- |Update the tfidf field in a lambda Entry
+updateTfidf :: Connection -> LambdaType -> T.Text -> (T.Text, Double) -> IO ()
+updateTfidf c lamType w (f, score) = do
+    let q = "UPDATE ? SET tfidf = ? \
+            \WHERE world = ? AND formula = ?"
+    let t = chooseLambdaTable lamType
+    rs    <- execute c q (t, score, w, f)
+    putStrLn ("updateTfidf " ++ show lamType ++ " " ++ show rs)
+    when (rs /= 1) $ error ("updateTfidf: result = " ++ show rs)
+
+-- |The formula, tf-idf scores of a world sorted descending.
+worldsTfidfDB :: Connection -> LambdaType -> T.Text -> IO [(T.Text, Double)]
+worldsTfidfDB c lamType w =
+    let
+      q = "SELECT formula, tfidf FROM ? where world = ? ORDER BY tfidf DESC"
+      t = chooseLambdaTable lamType
+    in
+      query c q (t, w)
 
 -- |Insert the stemming language of a world.
 insertStemLang :: Connection -> T.Text -> Maybe Algorithm -> IO ()

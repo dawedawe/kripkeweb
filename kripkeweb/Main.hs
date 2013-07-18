@@ -45,6 +45,14 @@ main = do
     when (BuildLambdaRel `S.member` optFlags (opts conf)) $
       buildLambdaStore c (proxy conf)
 
+    when (CalcTfidf `S.member` optFlags (opts conf)) $ do
+      storeAllTfidf c BdyRaw
+      storeAllTfidf c BdyStem
+      storeAllTfidf c BdySoundex
+      storeAllTfidf c MtaRaw
+      storeAllTfidf c MtaStem
+      storeAllTfidf c MtaSoundex
+
     when (CalcPageRank `S.member` optFlags (opts conf)) $
       calcAndUpdatePageRanks c (optPgIters (opts conf))
 

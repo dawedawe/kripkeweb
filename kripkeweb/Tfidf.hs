@@ -1,9 +1,11 @@
 module Tfidf
 ( allTfidf
 , allTopTfidf
+, storeAllTfidf
 , tfidf
 , tfidfSortedSearch
 , worldsTopTfidf
+, worldsTopXPercentTfidf
 , worldsTfidf
 ) where
 
@@ -19,6 +21,7 @@ import Database.PostgreSQL.Simple
 import DB
 import KripkeTypes
 import Model
+import Util
 
 -- |Compute the tf-idf for a term in a world.
 tfidf :: Connection -> LambdaType -> T.Text -> T.Text -> IO Double
@@ -55,6 +58,13 @@ worldsTopTfidf :: Connection -> LambdaType -> Int -> T.Text ->
                   IO [(T.Text, Double)]
 worldsTopTfidf c lamType n w =
     liftM (take n . reverse) (worldsTfidf c lamType w)
+
+-- |Top x percent of the tf-idf scores of a world.
+worldsTopXPercentTfidf :: Connection -> LambdaType -> Int -> T.Text ->
+                          IO [T.Text]
+worldsTopXPercentTfidf c lamType prcnt w = do
+    ts <- worldsTfidfDB c lamType w
+    return (map fst (keepFirstXPercent prcnt ts))
 
 -- |tf-idf scores of all worlds sorted descending, precompute as much as
 -- possible.
@@ -115,3 +125,14 @@ tfidfSortedSearch c lamType t = do
     let res = zip ws ts
     return (reverse (sortBy (compare `on` snd) res))
 
+--------------------------------------------------------------------------------
+-- functions for storing precomputed tfidf score in the database
+
+storeAllTfidf :: Connection -> LambdaType -> IO ()
+storeAllTfidf c lamType = do
+    allTs <- allTfidf c lamType
+    mapM_ (storeWorldsTfidf c lamType) allTs
+
+storeWorldsTfidf :: Connection -> LambdaType -> (T.Text, [(T.Text, Double)]) ->
+                    IO ()
+storeWorldsTfidf c lamType (w, scores) = mapM_ (updateTfidf c lamType w) scores

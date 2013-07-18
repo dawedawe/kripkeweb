@@ -8,6 +8,7 @@ CREATE TABLE lambda (
     world       varchar(1024) NOT NULL,
     formula     varchar(100) NOT NULL,
     frmcount    integer NOT NULL,
+    tfidf       float,
     PRIMARY KEY (world, formula)
 );
 
@@ -15,6 +16,7 @@ CREATE TABLE lambda_stems (
     world       varchar(1024) NOT NULL,
     formula     varchar(100) NOT NULL,
     frmcount    integer NOT NULL,
+    tfidf       float,
     PRIMARY KEY (world, formula)
 );
 
@@ -22,6 +24,7 @@ CREATE TABLE lambda_soundex (
     world       varchar(1024) NOT NULL,
     formula     varchar(4) NOT NULL,
     frmcount    integer NOT NULL,
+    tfidf       float,
     PRIMARY KEY (world, formula)
 );
 
@@ -29,6 +32,7 @@ CREATE TABLE lambda_m (
     world       varchar(1024) NOT NULL,
     formula     varchar(100) NOT NULL,
     frmcount    integer NOT NULL,
+    tfidf       float,
     PRIMARY KEY (world, formula)
 );
 
@@ -36,6 +40,7 @@ CREATE TABLE lambda_mstems (
     world       varchar(1024) NOT NULL,
     formula     varchar(100) NOT NULL,
     frmcount    integer NOT NULL,
+    tfidf       float,
     PRIMARY KEY (world, formula)
 );
 
@@ -43,6 +48,7 @@ CREATE TABLE lambda_msoundex (
     world       varchar(1024) NOT NULL,
     formula     varchar(4) NOT NULL,
     frmcount    integer NOT NULL,
+    tfidf       float,
     PRIMARY KEY (world, formula)
 );
 
