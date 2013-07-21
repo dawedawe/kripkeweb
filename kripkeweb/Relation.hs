@@ -129,5 +129,5 @@ unreflRelCountAmongWorlds rel ws =
 
 -- |Drop reflexive relations.
 dropReflRels :: (Eq a) => [(a, a)] -> [(a, a)]
-dropReflRels = filter (\(a, b) -> a /= b)
+dropReflRels = filter (uncurry (/=))
 
