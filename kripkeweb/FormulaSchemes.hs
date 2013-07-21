@@ -17,7 +17,7 @@ module FormulaSchemes
 , tfidfsTopXOredDiamonded
 ) where
 
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, mapMaybe)
 import Database.PostgreSQL.Simple
 import qualified Data.Text as T
 
@@ -27,11 +27,13 @@ import Logic
 import Tfidf
 import Util
 
+-- |Construct for every world a formula that demands at least one similar
+-- accessable world.
 atLeastOneSimilarAccWorld :: Connection -> LambdaType -> Int -> IO [Fml]
 atLeastOneSimilarAccWorld c lamType prcnt = do
     ws <- worldsInLinks c
     ts <- mapM (worldsTopXPercentTfidf c lamType prcnt) ws
-    return (catMaybes (map atLeastOneSimilarAccWorldHelper ts))
+    return (mapMaybe atLeastOneSimilarAccWorldHelper ts)
 
 atLeastOneSimilarAccWorldHelper :: [T.Text] -> Maybe Fml
 atLeastOneSimilarAccWorldHelper fmls =
@@ -48,16 +50,14 @@ tfidfsCuttedOred :: Connection -> LambdaType -> Int -> IO [Fml]
 tfidfsCuttedOred c lamType prcnt = do
     allTs  <- allTfidf c lamType
     let ws = map (dropFirstAndLastXPercent prcnt . map fst . snd) allTs
-    let fmls = map (formulasToJunction Or) ws
-    return (catMaybes fmls)
+    return (mapMaybe (formulasToJunction Or) ws)
 
 -- |The top X percent of each world's tfidf sorted formulas ored together.
 tfidfsTopXOred :: Connection -> LambdaType -> Int -> IO [Fml]
 tfidfsTopXOred c lamType prcnt = do
     allTs  <- allTfidf c lamType
     let ws = map (keepFirstXPercent prcnt . map fst . snd) allTs
-    let fmls = map (formulasToJunction Or) ws
-    return (catMaybes fmls)
+    return (mapMaybe (formulasToJunction Or) ws)
 
 -- |Like the formulas from tfidfsTopXOred, but each diamonded.
 tfidfsTopXOredDiamonded :: Connection -> LambdaType -> Int -> IO [Fml]
