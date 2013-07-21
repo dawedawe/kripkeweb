@@ -100,10 +100,10 @@ updateHubValue (Frame _ rels) bigG p =
 
 communityAndLoners :: Connection -> LambdaType -> Int -> IO ([T.Text], [T.Text])
 communityAndLoners c lamType prcnt = do
-    fmls   <- atLeastOneSimilarAccWorld c lamType prcnt
-    mdl    <- dbModel c lamType
-    let comWs = (L.nub . concat) (map (satMWorlds (toUnreflModel mdl)) fmls)
-    let ws = S.toList (wSet (frame mdl))
+    fmls      <- atLeastOneSimilarAccWorld c lamType prcnt
+    mdl       <- dbModel c lamType
+    let comWs =  (L.nub . concat) (map (satMWorlds (toUnreflModel mdl)) fmls)
+    let ws    =  S.toList (wSet (frame mdl))
     return (comWs, ws L.\\ comWs)
 
 --------------------------------------------------------------------------------
