@@ -109,16 +109,16 @@ communityAndLoners c lamType prcnt = do
 --------------------------------------------------------------------------------
 -- functions for partitioning stats
 
--- |1 - zusammenhang, the higher the less the two partitions stick together.
-trennschaerfe :: Connection -> [T.Text] -> [T.Text] -> IO Double
-trennschaerfe c aPart bPart = do
-    z <- zusammenhang c aPart bPart
+-- |1 - interrelation, the higher the less the two partitions stick together.
+selectivity :: Connection -> [T.Text] -> [T.Text] -> IO Double
+selectivity c aPart bPart = do
+    z <- interrelation c aPart bPart
     return (1 - z)
 
 -- |Link count among partitions in proportion to the maximum link count to
 -- measure how much two partitions stick together.
-zusammenhang :: Connection -> [T.Text] -> [T.Text] -> IO Double
-zusammenhang c aPart bPart = do
+interrelation :: Connection -> [T.Text] -> [T.Text] -> IO Double
+interrelation c aPart bPart = do
     lnkcnt <- linkCountBetweenWorldSets c aPart bPart
     let me =  maxEdgesBetweenBinPartition aPart bPart
     return (fromIntegral lnkcnt / fromIntegral me)
@@ -128,7 +128,7 @@ maxEdgesBetweenBinPartition :: [a] -> [a] -> Int
 maxEdgesBetweenBinPartition aPart bPart = 2 * length aPart * length bPart
 
 -- |Average link count per world in a partition.
-linksPerWorldInPartition :: Connection -> [T.Text] -> IO Double
-linksPerWorldInPartition c part = do
+avgLinksPerWorldInPartition :: Connection -> [T.Text] -> IO Double
+avgLinksPerWorldInPartition c part = do
     plinks <- linkCountAmongWorlds c part
     return (fromIntegral plinks / fromIntegral (length part))
