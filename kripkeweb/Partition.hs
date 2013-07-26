@@ -45,7 +45,7 @@ approxHnA c lamType prcnt = do
 divideHubsAndAuthorities :: Frame -> ([AHpage], [AHpage])
 divideHubsAndAuthorities frm@(Frame w _) =
     let
-      hubsnAuths = hubsAndAuthorities frm 5 (initAHpages (S.toList w))
+      hubsnAuths = hubsAndAuthorities frm 20 (initAHpages (S.toList w))
       auths      = filter (\x -> auth x > hub x) hubsnAuths
       hubs       = hubsnAuths L.\\ auths
       auths'     = L.sortBy (compare `on` auth) auths
@@ -53,9 +53,12 @@ divideHubsAndAuthorities frm@(Frame w _) =
     in
       (auths', hubs')
 
+-- |Convert to a list of AHpage and initialize scores with 1.0.
 initAHpages :: [T.Text] -> [AHpage]
 initAHpages names = [AHpage n 1.0 1.0 | n <- names]
 
+-- |Iterating code of the kleinberg algorithm, gives every AHpage a hub- and an
+-- authoritiy-score.
 hubsAndAuthorities :: Frame -> Int -> [AHpage] -> [AHpage]
 hubsAndAuthorities frm k pages
     | k <  0    = error "hubsAndAuthorities: negative k"
@@ -64,13 +67,14 @@ hubsAndAuthorities frm k pages
         let
           pages1 = map (updateAuthValue frm pages) pages
           norm1  = updateNorm pages1 auth
-          pages2 = [p { auth = auth p / norm1 } | p <- pages1]  -- 14, 15
-          pages3 = map (updateHubValue frm pages2) pages2       -- 17 - 20
+          pages2 = [p { auth = auth p / norm1 } | p <- pages1]
+          pages3 = map (updateHubValue frm pages2) pages2
           norm2  = updateNorm pages3 hub
-          pages4 = [p { hub = hub p / norm2 } | p <- pages3]    -- 23, 24
+          pages4 = [p { hub = hub p / norm2 } | p <- pages3]
         in
           hubsAndAuthorities frm (pred k) pages4
 
+-- |Update the normalization factor.
 updateNorm :: [AHpage] -> (AHpage -> Double) -> Double
 updateNorm pages f = sqrt $ sum [sqrt (f p) | p <- pages]
 
