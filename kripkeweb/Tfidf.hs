@@ -1,5 +1,6 @@
 module Tfidf
 ( allTfidf
+, allTfidfDB
 , allTopTfidf
 , storeAllTfidf
 , tfidf
@@ -74,6 +75,13 @@ allTfidf c lamType = do
     ws  <- worldsInLambda c lamType
     let n = length ws 
     ts  <- mapM (worldsTfidfPre c lamType n dfs) ws
+    return (zip ws ts)
+
+-- |tf-idf scores of all worlds sorted descending, use precomputed DB values.
+allTfidfDB :: Connection -> LambdaType -> IO [(T.Text, [(T.Text, Double)])]
+allTfidfDB c lamType = do
+    ws  <- worldsInLambda c lamType
+    ts  <- mapM (worldsTfidfDB c lamType) ws
     return (zip ws ts)
 
 -- |Top n tf-idf scores of all worlds, precompute as much as possible.
