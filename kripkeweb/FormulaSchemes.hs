@@ -55,7 +55,7 @@ tfidfsCuttedOred c lamType prcnt = do
 -- |The top X percent of each world's tfidf sorted formulas ored together.
 tfidfsTopXOred :: Connection -> LambdaType -> Int -> IO [Fml]
 tfidfsTopXOred c lamType prcnt = do
-    allTs  <- allTfidf c lamType
+    allTs  <- allTfidfDB c lamType
     let ws = map (keepFirstXPercent prcnt . map fst . snd) allTs
     return (mapMaybe (formulasToJunction Or) ws)
 
