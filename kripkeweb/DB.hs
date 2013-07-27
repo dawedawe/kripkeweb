@@ -13,7 +13,7 @@ module DB
 , insertAccessRel
 , insertStemLang
 , lambdaAccum
-, linkCountAmongWorlds
+, unreflLinkCountAmongWorlds
 , linkCountBetweenWorldSets
 , myConn
 , negateLambaWorlds
@@ -537,10 +537,11 @@ indegreeDistribution c =
     in  query_ c q
 
 -- |Count of links between worlds in the given list.
-linkCountAmongWorlds :: Connection -> [T.Text] -> IO Int
-linkCountAmongWorlds c ws =
+unreflLinkCountAmongWorlds :: Connection -> [T.Text] -> IO Int
+unreflLinkCountAmongWorlds c ws =
     let q = "SELECT count(*) FROM links \
-            \WHERE source IN ? AND target IN ?"
+            \WHERE source IN ? AND target IN ? \
+            \AND source <> target"
     in  liftM (fromOnly . head) $ query c q (In ws, In ws)
 
 -- |Crossing links between two sets of worlds.

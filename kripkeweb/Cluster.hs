@@ -19,6 +19,7 @@ import DB
 import FormulaSchemes
 import KripkeTypes
 import Logic
+import Measure
 import Relation
 
 data SpacePnt = SpacePnt { name     :: T.Text
@@ -193,22 +194,6 @@ keepCentroidsOfEmptyClusters os ns
 --------------------------------------------------------------------------------
 -- functions for similarity/disimilarity measures
 
--- |Simple similarity measure: |x intersect y| / |x union y|.
-similarity :: (Eq a, Ord a) => S.Set a -> S.Set a -> Double
-similarity x y
-    | S.null x && S.null y = 1.0
-    | S.null x /= S.null y = 0.0
-    | otherwise            =
-        let
-          interSize = S.size (x `S.intersection` y)
-          unionSize = S.size (x `S.union` y)
-        in
-          fromIntegral interSize / fromIntegral unionSize
-
--- |Simple disimilarity measure: 1 - similarity x y.
-disimilarity :: (Eq a, Ord a) => S.Set a -> S.Set a -> Double
-disimilarity x y = 1 - similarity x y
-
 -- |Average similarity of pairs in a cluster.
 clusterSim :: Model -> Cluster -> Maybe Double
 clusterSim (Model _ lam) cluster
@@ -361,7 +346,7 @@ genClusterStats mdl@(Model frm _) cluster =
     let
       sze = length cluster
       sim = clusterSim mdl cluster
-      clq = cliqueness frm cluster
+      clq = clusterCliqueness frm cluster
     in
       ClusterStats sze sim clq
 
@@ -378,15 +363,11 @@ printCluster cluster = do
 --------------------------------------------------------------------------------
 -- functions for graph related measures
 
--- |Edge count in a total directed graph.
-edgesInDigraphClique :: Int -> Int
-edgesInDigraphClique n = n * (n - 1)
-
 -- |Links in a cluster / edge count of a digraph clique.
-cliqueness :: Frame -> Cluster -> Maybe Double
-cliqueness _           []      = Nothing
-cliqueness _           [_]     = Just 1.0
-cliqueness (Frame _ r) cluster =
+clusterCliqueness :: Frame -> Cluster -> Maybe Double
+clusterCliqueness _           []      = Nothing
+clusterCliqueness _           [_]     = Just 1.0
+clusterCliqueness (Frame _ r) cluster =
     let
       ws = map name cluster
       es = edgesInDigraphClique (length ws)

@@ -17,6 +17,7 @@ import DB
 import FormulaSchemes
 import KripkeTypes
 import Logic
+import Measure
 import Relation
 
 --------------------------------------------------------------------------------
@@ -131,8 +132,18 @@ interrelation c aPart bPart = do
 maxEdgesBetweenBinPartition :: [a] -> [a] -> Int
 maxEdgesBetweenBinPartition aPart bPart = 2 * length aPart * length bPart
 
--- |Average link count per world in a partition.
+-- |Average link count per world in a partition, not counting reflexive ones.
 avgLinksPerWorldInPartition :: Connection -> [T.Text] -> IO Double
 avgLinksPerWorldInPartition c part = do
-    plinks <- linkCountAmongWorlds c part
+    plinks <- unreflLinkCountAmongWorlds c part
     return (fromIntegral plinks / fromIntegral (length part))
+
+-- |Links in a partition / edge count of a digraph clique.
+partCliqueness :: Connection -> [T.Text] -> IO (Maybe Double)
+partCliqueness _ []  = return Nothing
+partCliqueness _ [_] = return (Just 1.0)
+partCliqueness c ws  = do
+    let es =  edgesInDigraphClique (length ws)
+    lc     <- unreflLinkCountAmongWorlds c ws
+    return (Just (fromIntegral lc / fromIntegral es))
+
