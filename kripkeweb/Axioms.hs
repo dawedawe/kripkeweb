@@ -45,7 +45,9 @@ symTransSubFrames c = do
     syms  <- symSubFrame c
     trans <- transSubFrames c
     -- drop relations interacting with the source world of a missing symmetry
-    let stR = [dropRelsWithElemInS b r | (Frame _ r) <- S.toList trans,
+    -- and make sure the relation sets still contain a transitive relation
+    let stR = filter (containsTransRel . S.toList)
+              [dropRelsWithElemInS b r | (Frame _ r) <- S.toList trans,
                 let b = startOfMissingSyms (accRel syms) r]
     let stF = [Frame (flattenTupleSet r) r | r <- stR]
     return (S.fromList [Frame w (addSyms r) | (Frame w r) <- stF])
@@ -56,7 +58,8 @@ reflSymTransSubFrames c = do
     reflsF <- reflSubFrame c
     stF    <- symTransSubFrames c
     -- both ends of a relation must be reflexive, filter out elems not in reflsF
-    let reflSyTrR = S.filter (/= S.empty)
+    -- and make sure the relation sets still contain a transitive relation
+    let reflSyTrR = S.filter (\r -> r /= S.empty && containsTransRel (S.toList r))
                       (S.map (S.filter (pairIn (wSet reflsF)))
                       (S.map accRel stF))
     -- generate Frames with reflexive R-elements, then add reflexive rels
