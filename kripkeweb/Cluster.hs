@@ -393,7 +393,7 @@ clusterCliqueness (Frame _ r) cluster =
     in
       Just (fromIntegral lc / fromIntegral es)
 
--- |Average disimilarity among a list of clusters.
+-- |Average cliqueness in a list of clusters.
 avgClusterCliqueness :: Frame -> [Cluster] -> Double
 avgClusterCliqueness frm clusters =
         let cls = mapMaybe (clusterCliqueness frm) clusters
