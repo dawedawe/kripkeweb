@@ -150,7 +150,7 @@ dynkMeans mdl@(Model (Frame w _) _) fmls k = do
     let clusters =
           filter (not . null)
           [map fst c | i <- [0..(k - 1)], let c = filter ((== i) . snd) wk]
-    return (dynkMeansLoop mdl clusters centroids 10)
+    return (dynkMeansLoop mdl clusters centroids 20)
 
 -- |Looping function for kMeans, ends when centroids stop moving or after i
 -- loops.
@@ -248,11 +248,11 @@ avgClusterDisim mdl clusters
 
 -- |Lowest acceptable cluster similarity in decision to split or not to split
 minClusterSimilarity :: Double
-minClusterSimilarity = 0.01
+minClusterSimilarity = 0.2
 
 -- |Lowest acceptable cluster disimilarity in decision to merge or not to merge
 minClusterDisimilarity :: Double
-minClusterDisimilarity = 0.7
+minClusterDisimilarity = 0.8
 
 -- |Merge clusters with too small a disimilarity, fill up empty spots with empty
 -- lists to maintain the index information, then delete the empty lists.
@@ -304,7 +304,7 @@ splitClusters :: Model -> [Cluster] -> [Cluster]
 splitClusters mdl clusters =
     let candidates = splitCandidates mdl clusters
     in  concat [if i `elem` candidates
-                  then splitCluster (clusters !! i)
+                  then splitCluster' mdl (clusters !! i)
                   else [clusters !! i]
                   | i <- [0..(length clusters - 1)]]
 
@@ -316,6 +316,22 @@ splitCluster cluster =
       c1 = drop (length c0) cluster
     in
       [c0, c1]
+
+splitCluster' :: Model -> Cluster -> [Cluster]
+splitCluster' mdl cluster = splitClusterHelper mdl cluster 1
+
+splitClusterHelper :: Model -> Cluster -> Int -> [Cluster]
+splitClusterHelper _ [ ] _       = []
+splitClusterHelper _ [x] _       = [[x]]
+splitClusterHelper mdl cluster n =
+    let
+      s = clusterSim mdl (drop n cluster)
+    in
+      case s of
+        Nothing -> [cluster]
+        Just s  -> if s >= minClusterSimilarity  
+                     then [take n cluster, drop n cluster]
+                     else splitClusterHelper mdl cluster (succ n)
 
 --------------------------------------------------------------------------------
 -- functions for displaying cluster information
@@ -339,6 +355,8 @@ printClusterStats mdl clusters = do
     mapM_ print ss
     putStrLn ("avgClusterSim = " ++ show (avgClusterSim mdl clusters))
     putStrLn ("avgClusterDisim = " ++ show (avgClusterDisim mdl clusters))
+    putStrLn ("avgClusterCliqueness = " ++
+      show (avgClusterCliqueness (frame mdl) clusters))
 
 -- |Generate a ClusterStats for the given Cluster.
 genClusterStats :: Model -> Cluster -> ClusterStats
@@ -374,4 +392,11 @@ clusterCliqueness (Frame _ r) cluster =
       lc = unreflRelCountAmongWorlds (S.toList r) ws
     in
       Just (fromIntegral lc / fromIntegral es)
+
+-- |Average disimilarity among a list of clusters.
+avgClusterCliqueness :: Frame -> [Cluster] -> Double
+avgClusterCliqueness frm clusters =
+        let cls = mapMaybe (clusterCliqueness frm) clusters
+        in  sum cls / fromIntegral (length cls)
+
 
