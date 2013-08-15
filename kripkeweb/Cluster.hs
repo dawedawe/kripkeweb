@@ -7,9 +7,12 @@ module Cluster
 , similarity
 ) where
 
+import Control.Arrow ((&&&))
+import Data.Function (on)
 import qualified Data.List as L
 import qualified Data.List.Utils as LU (replace)
 import Data.Maybe (catMaybes, isJust, fromJust, mapMaybe)
+import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Database.PostgreSQL.Simple
@@ -399,4 +402,44 @@ avgClusterCliqueness frm clusters =
         let cls = mapMaybe (clusterCliqueness frm) clusters
         in  sum cls / fromIntegral (length cls)
 
+
+--------------------------------------------------------------------------------
+-- functions for hierarchical clustering
+
+-- |Implementation of the single link algorithm, returns a list of lists of
+-- edges, that are drawn with rising distances.
+singleLink :: (AsLambdaType f, MTrueIn f) => Model -> [f] ->
+              [[(T.Text, T.Text)]]
+singleLink mdl fmls =
+    let
+      sortedDs = distancesMap mdl fmls
+      ds       = L.nub (map snd sortedDs)
+    in
+      singleLinkLoop sortedDs ds
+
+-- |Recursive part of the single link algorithm.
+singleLinkLoop :: [(S.Set T.Text, Double)] -> [Double] -> [[(T.Text, T.Text)]]
+singleLinkLoop sortedDs []     = []
+singleLinkLoop sortedDs (d:ds) =
+    let
+      edges = map (S.toList . fst) (takeWhile (\x -> snd x <= d) sortedDs)
+      graph = map (head &&& last) edges
+    in
+      graph : singleLinkLoop (drop (length graph) sortedDs) ds
+
+-- |Distances between all worlds in the model.
+distancesMap :: (AsLambdaType f, MTrueIn f) => Model -> [f] ->
+                 [(S.Set T.Text, Double)]
+distancesMap mdl@(Model (Frame ws _) _) fmls =
+    let
+      ps = fmlSpacePoses mdl fmls (S.toList ws)
+      ds = L.nub (concatMap (worldsDistances ps) ps)
+    in
+      L.sortBy (compare `on` snd) ds
+      
+-- |Distances of a world to all other given worlds, except to its self.
+worldsDistances :: [SpacePnt] -> SpacePnt -> [(S.Set T.Text, Double)]
+worldsDistances poses (SpacePnt wn wp) =
+    let poses' = filter (\p -> name p /= wn) poses
+    in  [(S.fromList [wn, name x], boolsDist wp (position x)) | x <- poses']
 
