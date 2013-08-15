@@ -25,6 +25,7 @@ import Logic
 import Measure
 import Relation
 
+-- |Type for a world in the representation space.
 data SpacePnt = SpacePnt { name     :: T.Text
                          , position :: [Bool]
                          } deriving (Eq)
@@ -401,7 +402,6 @@ avgClusterCliqueness :: Frame -> [Cluster] -> Double
 avgClusterCliqueness frm clusters =
         let cls = mapMaybe (clusterCliqueness frm) clusters
         in  sum cls / fromIntegral (length cls)
-
 
 --------------------------------------------------------------------------------
 -- functions for hierarchical clustering
