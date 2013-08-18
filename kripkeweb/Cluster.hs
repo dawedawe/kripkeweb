@@ -82,6 +82,28 @@ randomBools n = do
 minCentsDist :: [Bool] -> [Bool] -> Bool
 minCentsDist xs ys = boolsDist xs ys >= sqrt (fromIntegral (length xs `div` 2))
 
+-- |Entropy of a boolean space position.
+entropy :: [Bool] -> Double
+entropy bvec =
+    let
+      len  = length bvec
+      tcnt = length $ filter (== True) bvec
+      fcnt = len - tcnt
+      p_t  = fromIntegral tcnt / fromIntegral len
+      p_f  = fromIntegral fcnt / fromIntegral len
+      e_t  = if p_t == 0
+               then 0
+               else (-p_t) * (logBase 2 p_t)
+      e_f  = if p_f == 0
+               then 0
+               else (-p_f) * (logBase 2 p_f)
+    in
+      e_t + e_f
+
+-- |Minimum entropy of a boolean space position.
+minCentEntropy :: [Bool] -> Bool
+minCentEntropy centroid = entropy centroid > 0.3
+
 -- |Minimum randomness of a boolean space position.
 minCentRandomness :: [Bool] -> Bool
 minCentRandomness centroid =
@@ -98,8 +120,9 @@ minCentQuality cents =
     let
       rs = map minCentRandomness cents
       dq = [and q | x <- cents, let q = map (minCentsDist x) (L.delete x cents)]
+      et = map minCentEntropy cents
     in
-      and rs && and dq
+      and rs && and dq && and et
 
 -- |Generate k random centroid positions in a d dimensional boolean space.
 -- Stop reaching min quality after i tries.
