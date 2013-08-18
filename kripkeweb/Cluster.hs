@@ -466,3 +466,22 @@ worldsDistances poses (SpacePnt wn wp) =
     let poses' = filter (\p -> name p /= wn) poses
     in  [(S.fromList [wn, name x], boolsDist wp (position x)) | x <- poses']
 
+-- |Construct clusters out of the output of singleLink.
+edgeListToClusters :: [(T.Text, T.Text)] -> [S.Set T.Text]
+edgeListToClusters es =
+    let eSets = [S.fromList [x, y] | (x, y) <- es]
+    in  L.nub [connComp s eSets | s <- eSets]
+
+
+-- |Vertices of the connected component containing startEdge.
+connComp :: (Ord a) => S.Set a -> [S.Set a] -> S.Set a
+connComp startEdge [] = startEdge
+connComp startEdge es =
+    let
+      dirConn    = filter (\e -> startEdge `S.intersection` e /= S.empty) es
+      rest       = es L.\\ dirConn
+      startEdge' = startEdge `S.union` (S.unions dirConn)
+    in
+      if length dirConn > 0
+        then connComp startEdge' rest
+        else startEdge
