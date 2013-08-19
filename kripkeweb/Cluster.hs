@@ -429,6 +429,13 @@ avgClusterCliqueness frm clusters =
 --------------------------------------------------------------------------------
 -- functions for hierarchical clustering
 
+-- |Hierarchie of clusters constructed by the single link algorithm.
+singleLinkHier :: (AsLambdaType f, MTrueIn f) => Model -> [f] ->
+                  [[S.Set T.Text]]
+singleLinkHier mdl fmls =
+    let edges = singleLink mdl fmls
+    in  L.nub (map (edgeListToClusters . concat) (tail (L.inits edges)))
+
 -- |Implementation of the single link algorithm, returns a list of lists of
 -- edges, that are drawn with rising distances.
 singleLink :: (AsLambdaType f, MTrueIn f) => Model -> [f] ->
@@ -485,3 +492,4 @@ connComp startEdge es =
       if length dirConn > 0
         then connComp startEdge' rest
         else startEdge
+
