@@ -14,6 +14,7 @@ module KripkeTypes
 , lambdaPure
 , oToN2OneToOnes
 , oToNtuples2LambdaEntry
+, reduceModel
 , toUnreflModel
 ) where
 
@@ -27,7 +28,7 @@ import Database.PostgreSQL.Simple.ToRow
 import Database.PostgreSQL.Simple.ToField
 import NLP.Snowball (Algorithm (..))
 
-import Relation (dropReflRels)
+import Relation (dropReflRels, dropRelsWithElemInS)
 import Util (unquote)
 
 -- |Type for a Kripke-Model.
@@ -67,6 +68,13 @@ toUnreflModel :: Model -> Model
 toUnreflModel (Model (Frame w r) l) =
     let r' = S.fromList (dropReflRels (S.toList r))
     in  Model (Frame w r') l
+
+-- |Reduce the model to the given set of worlds, drop relations with other
+-- worlds.
+reduceModel :: Model -> S.Set Text -> Model
+reduceModel (Model (Frame ws rels) l) worlds2Keep =
+    let rels' = dropRelsWithElemInS (ws S.\\ worlds2Keep) rels
+    in  (Model (Frame worlds2Keep rels') l)
 
 --------------------------------------------------------------------------------
 -- Types for interaction with the database
