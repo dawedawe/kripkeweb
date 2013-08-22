@@ -45,7 +45,7 @@ data Options = Options { optUrl      :: T.Text
 data Flag = BuildR              -- build accessability relation R
           | BuildRelativeR      -- build relative accessability relation R
           | PLFmlEval           -- evaluate propositional logic formula
-          | MLFmlEval           -- evaluate modal logic formula
+          | PMLFmlEval          -- evaluate modal logic formula
           | BuildLambdaRel      -- build the lambda relation
           | LambdaAccum         -- group and accumulate Lambda formulas
           | InLinkRings
@@ -135,11 +135,11 @@ options = [
                              in  optns { optFlags = PLFmlEval `S.insert` f,
                                          optFml   = T.pack fml }) "PLFORMULA" )
       "evaluate the PL formula"
-    , Option "" ["mlformula"]
+    , Option "" ["pmlformula"]
       (ReqArg (\fml optns -> let f = optFlags optns
-                             in  optns { optFlags = MLFmlEval `S.insert` f,
-                                         optFml   = T.pack fml }) "MLFORMULA" )
-      "evaluate the PL formula"
+                             in  optns { optFlags = PMLFmlEval `S.insert` f,
+                                         optFml   = T.pack fml }) "PMLFORMULA" )
+      "evaluate the PML formula"
     , Option "" ["lambdatype"]
       (ReqArg (\t optns -> let f = optFlags optns
                            in  optns { optFlags   = UseLambdaType `S.insert` f,

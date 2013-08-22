@@ -73,9 +73,9 @@ main = do
       ws <- satWorlds c lamType frm
       mapM_ print ws
 
-    when (MLFmlEval `S.member` optFlags (opts conf)) $ do
+    when (PMLFmlEval `S.member` optFlags (opts conf)) $ do
       let frm = read (T.unpack (optFml (opts conf))) :: Fml
-      putStrLn ("mlformula: " ++ show frm ++ " =")
+      putStrLn ("pmlformula: " ++ show frm ++ " =")
       ws <- satWorlds c lamType frm
       mapM_ print ws
 
