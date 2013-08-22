@@ -8,8 +8,11 @@ import Data.Function (on)
 import qualified Data.List as L
 import qualified Data.Set as S
 import qualified Data.Text as T
+import Database.PostgreSQL.Simple
 
 import Cluster
+import DB
+import FormulaSchemes
 import KripkeTypes
 import Logic
 

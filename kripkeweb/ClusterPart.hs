@@ -7,9 +7,12 @@ import qualified Data.List as L
 import qualified Data.List.Utils as LU (replace)
 import Data.Maybe (isJust, fromJust)
 import qualified Data.Set as S
+import Database.PostgreSQL.Simple
 import System.Random
 
 import Cluster
+import DB
+import FormulaSchemes
 import KripkeTypes
 import Logic
 import Relation
