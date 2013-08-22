@@ -47,7 +47,7 @@ relsStartingWith' rels w = filter ((== w) . fst) rels
 unreflRelsStartingWith :: (Eq a) => [(a, a)] -> a -> [(a, a)]
 unreflRelsStartingWith rels w = filter (\(x, y) -> x == w && y /= w) rels
 
--- |Pure version of targetsOf
+-- |Pure version of targetsOf.
 targetsOf' :: (Eq a) => [(a, a)] -> a -> [a]
 targetsOf' rels w = map snd (relsStartingWith' rels w)
 
@@ -109,7 +109,7 @@ hasTransRelation rels w =
 
 -- |Drop additional pairs in the list that share an element.
 dropOverlappingPairs :: (Eq a) => [(a, a)] -> [(a, a)]
-dropOverlappingPairs [] = []
+dropOverlappingPairs []            = []
 dropOverlappingPairs ((x1, x2):xs) =
     let
       ps = filter (\(y1,y2) -> y1 `notElem` [x1,x2] && y2 `notElem` [x1,x2]) xs
