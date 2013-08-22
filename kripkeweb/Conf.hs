@@ -28,11 +28,13 @@ import System.FilePath (pathSeparator)
 
 import KripkeTypes
 
+-- |Data type to hold the whole configuration.
 data Conf = Conf { opts    :: Options
                  , proxy   :: Maybe Proxy
                  , conInfo :: ConnectInfo
                  }
 
+-- |Data type to hold the command line options.
 data Options = Options { optUrl      :: T.Text
                        , optRecDepth :: Int
                        , optPgIters  :: Int
@@ -42,6 +44,7 @@ data Options = Options { optUrl      :: T.Text
                        , optLamType  :: LambdaType
                        }
 
+-- |Enumeration of command line flags.
 data Flag = BuildR              -- build accessability relation R
           | BuildRelativeR      -- build relative accessability relation R
           | PLFmlEval           -- evaluate propositional logic formula
@@ -66,7 +69,7 @@ data Flag = BuildR              -- build accessability relation R
 
 type Proxy = (String, Word32)
 
--- |Default cli options, used if none given.
+-- |Default command line options, used if none given.
 defaultOptions :: Options
 defaultOptions = Options { optUrl      = T.empty
                          , optRecDepth = 1
@@ -262,7 +265,7 @@ createDotDir :: IO ()
 createDotDir = do
     dDir   <- dotDirPath
     exists <- doesDirectoryExist dDir
-    createDirectoryIfMissing (not exists) dDir
+    _      <- createDirectoryIfMissing (not exists) dDir
     let cPath = dDir ++ [pathSeparator] ++ confFileName
     unless exists $ writeFile cPath defaultConf
 
