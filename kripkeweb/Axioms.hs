@@ -74,6 +74,7 @@ pairIn xs (y, z) = y `S.member` xs && z `S.member` xs
 makeReflTuples :: (Ord a) => S.Set a -> S.Set (a, a)
 makeReflTuples xs = S.fromList [(x, x) | x <- S.toList xs]
 
+-- |Starting elements of missing symmetric relations.
 startOfMissingSyms :: (Eq a, Ord a) => S.Set (a, a) -> S.Set (a, a) -> S.Set a
 startOfMissingSyms syms rels =
     S.fromList [y | (x, y) <- S.toList rels, (y, x) `S.notMember` syms]
@@ -103,14 +104,14 @@ isK c lamType frm p@(Var _) q@(Var _) = do
     let conc = Imp (Box p) (Box q)
     let fml  = Imp prem conc
     isFUniversallyTrue c lamType frm fml
-isK _ _       _   _           _           = error "isBigK: undefined parameters"
+isK _ _       _   _           _       = error "isK: undefined parameters"
 
 -- |Test if T (reflexive): p -> <>p  (alt: []p -> p) holds in the given frame.
 isT :: Connection -> LambdaType -> Frame -> Fml -> IO Bool
 isT c lamType frm p@(Var _) =
     let fml = Imp p (Diamond p)
     in  isFUniversallyTrue c lamType frm fml
-isT _ _       _   _           = error "isBigT: undefined parameters"
+isT _ _       _   _         = error "isT: undefined parameters"
 
 -- |Test if D (seriell): []p -> <>p All w: Ex v:(wRv) holds in the whole
 -- database model.
@@ -118,14 +119,14 @@ isD :: Connection -> LambdaType -> Frame -> Fml -> IO Bool
 isD c lamType frm p@(Var _) =
     let fml = Imp (Box p) (Diamond p)
     in  isFUniversallyTrue c lamType frm fml
-isD _ _       _   _           = error "isBigD: undefined parameters"
+isD _ _       _   _         = error "isD: undefined parameters"
 
 -- |Test if B (symmetric): p -> []<>p holds in the given frame.
 isB :: Connection -> LambdaType -> Frame -> Fml -> IO Bool
 isB c lamType frm p@(Var _) =
     let fml = Imp p (Box (Diamond p))
     in  isFTrueInWorlds c lamType frm fml (wSet frm)
-isB _ _       _   _           = error "isBigB: undefined parameters"
+isB _ _       _   _         = error "isB: undefined parameters"
 
 -- |Test if 4 (transitive): <><>p -> <>p (alt: []p -> [][]p) holds in the given
 -- frame.
@@ -133,11 +134,11 @@ is4 :: Connection -> LambdaType -> Frame -> Fml -> IO Bool
 is4 c lamType frm p@(Var _) =
     let fml = Imp (Diamond (Diamond p)) (Diamond p)
     in  isFTrueInWorlds c lamType frm fml (wSet frm)
-is4 _ _       _   _           = error "isBig4: undefined parameters"
+is4 _ _       _   _         = error "is4: undefined parameters"
 
 -- |Test if 5 (euclidean): <>p -> []<>p holds in given frame.
 is5 :: Connection -> LambdaType -> Frame -> Fml -> IO Bool
 is5 c lamType frm p@(Var _) =
     let fml = Imp (Diamond p) (Box (Diamond p))
     in  isFTrueInWorlds c lamType frm fml (wSet frm)
-is5 _ _       _   _           = error "isBig5: undefined parameters"
+is5 _ _       _   _         = error "is5: undefined parameters"
