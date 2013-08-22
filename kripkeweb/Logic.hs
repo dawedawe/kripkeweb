@@ -72,14 +72,14 @@ class AsLambdaType x where
 class Eval2Bool x where
     eval2B :: Connection -> LambdaType -> x -> IO Bool
 
--- |Fml set of Propositional Logic.
+-- |Fml set of Propositional Logic (PL).
 data PLFml = PLVar T.Text
            | PLNot PLFml
            | PLAnd PLFml PLFml
            | PLOr  PLFml PLFml
            | PLImp PLFml PLFml
 
--- |Fml set of Modal Logic
+-- |Fml set of Propositional Modal Logic (PML).
 data Fml = Var T.Text
          | Not Fml
          | And Fml Fml
@@ -450,7 +450,7 @@ parseFml' s =
 balancedParentheses :: String -> Bool
 balancedParentheses s = length (elemIndices '(' s) == length (elemIndices ')' s)
 
--- |Parse a String with parameters for a binary operator: "(x) (y)" -> (x, y)
+-- |Parse a String with parameters for a binary operator: "(x) (y)" -> (x, y).
 parseBiOpParms :: String -> (String, String)
 parseBiOpParms xs =
     let
@@ -459,7 +459,7 @@ parseBiOpParms xs =
     in
       (x, y)
 
--- |Read as much as needed for an expression with balanced parentheses 
+-- |Read as much as needed for an expression with balanced parentheses.
 takeTillParenBalanced :: String -> Int -> Int -> String
 takeTillParenBalanced ('(':s) o c
     | o == c && o /= 0  = ""
