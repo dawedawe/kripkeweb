@@ -26,4 +26,3 @@ disimilarity x y = 1 - similarity x y
 edgesInDigraphClique :: Int -> Int
 edgesInDigraphClique n = n * (n - 1)
 
-
