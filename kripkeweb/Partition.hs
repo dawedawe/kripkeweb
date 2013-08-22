@@ -23,14 +23,14 @@ import Relation
 --------------------------------------------------------------------------------
 -- Functions for hubs and authorities
 
--- Type to help with the divideHubsAndAuthorities algorithm
+-- Type to help with the divideHubsAndAuthorities algorithm.
 data AHpage = AHpage { name :: T.Text
                      , auth :: Double
                      , hub  :: Double
                      } deriving (Eq, Show)
 
 -- Approximate the hubs and authorities partitioning with
--- tfidfsTopXOredDiamonded 
+-- tfidfsTopXOredDiamonded.
 approxHnA :: Connection -> LambdaType -> Int -> IO ([T.Text], [T.Text])
 approxHnA c lamType prcnt = do
     mdl  <- dbModel c lamType
