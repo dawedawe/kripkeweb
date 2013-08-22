@@ -19,7 +19,7 @@ module KripkeTypes
 ) where
 
 import Control.Applicative ((<$>), (<*>))
-import Data.Text
+import qualified Data.Text as T
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
@@ -33,12 +33,12 @@ import Util (unquote)
 
 -- |Type for a Kripke-Model.
 data Model = Model { frame      :: Frame
-                   , lambdaFunc :: Text -> [Text]
+                   , lambdaFunc :: T.Text -> [T.Text]
                    }
 
 -- |Type for a Kripke-Frame.
-data Frame = Frame { wSet   :: S.Set Text
-                   , accRel :: S.Set (Text, Text)
+data Frame = Frame { wSet   :: S.Set T.Text
+                   , accRel :: S.Set (T.Text, T.Text)
                    } deriving (Eq, Ord, Show)
 
 -- |Type to hold all versions of postprocessed lambda data of a world.
@@ -60,7 +60,7 @@ data LambdaType = MtaRaw
                   deriving (Eq, Ord, Read, Show)
 
 -- |Pure version of the lambda function.
-lambdaPure :: M.Map Text [Text] -> Text -> [Text]
+lambdaPure :: M.Map T.Text [T.Text] -> T.Text -> [T.Text]
 lambdaPure mp w = fromMaybe [] (M.lookup w mp)
 
 -- |Drop the reflexive relations in the model.
@@ -71,7 +71,7 @@ toUnreflModel (Model (Frame w r) l) =
 
 -- |Reduce the model to the given set of worlds, drop relations with other
 -- worlds.
-reduceModel :: Model -> S.Set Text -> Model
+reduceModel :: Model -> S.Set T.Text -> Model
 reduceModel (Model (Frame ws rels) l) worlds2Keep =
     let rels' = dropRelsWithElemInS (ws S.\\ worlds2Keep) rels
     in  (Model (Frame worlds2Keep rels') l)
@@ -80,8 +80,8 @@ reduceModel (Model (Frame ws rels) l) worlds2Keep =
 -- Types for interaction with the database
 
 -- |Type for 1-1 relations.
-data OneToOne = OneToOne { xEntity :: Text
-                         , yEntity :: Text
+data OneToOne = OneToOne { xEntity :: T.Text
+                         , yEntity :: T.Text
                          } deriving (Show)
 
 instance FromRow OneToOne where
@@ -91,8 +91,8 @@ instance ToRow OneToOne where
     toRow (OneToOne x y) = [toField x, toField y]
 
 -- |Type for entries in the lambda table.
-data LambdaEntry = LambdaEntry { leWorld   :: Text
-                               , leFormula :: Text
+data LambdaEntry = LambdaEntry { leWorld   :: T.Text
+                               , leFormula :: T.Text
                                , leCount   :: Int
                                } deriving (Show)
 
@@ -103,7 +103,7 @@ instance ToRow LambdaEntry where
     toRow (LambdaEntry w f c) = [toField w, toField f, toField c]
 
 -- |Type for entries in the pagerank table.
-data PageRankEntry = PageRankEntry { peWorld :: Text
+data PageRankEntry = PageRankEntry { peWorld :: T.Text
                                    , peScore :: Double
                                    } deriving (Show)
 
@@ -114,16 +114,16 @@ instance ToRow PageRankEntry where
     toRow (PageRankEntry w s) = [toField w, toField s]
 
 -- |Type for 1-n relations.
-data OneToN = OneToN { oneEntity :: Text
-                     , nEntities :: S.Set Text
+data OneToN = OneToN { oneEntity :: T.Text
+                     , nEntities :: S.Set T.Text
                      } deriving (Eq, Show)
 
 instance Ord OneToN where
     compare (OneToN s1 t1) (OneToN s2 t2) = compare (s1,t1) (s2,t2)
 
--- |Type for 1-n relations with the right side being (Text, Int) tuples.
-data OneToNtuples = OneToNtuples { dEntity :: Text
-                                 , nTuples :: S.Set (Text, Int)
+-- |Type for 1-n relations with the right side being (T.Text, Int) tuples.
+data OneToNtuples = OneToNtuples { dEntity :: T.Text
+                                 , nTuples :: S.Set (T.Text, Int)
                                  } deriving (Eq, Show)
 
 instance Ord OneToNtuples where
