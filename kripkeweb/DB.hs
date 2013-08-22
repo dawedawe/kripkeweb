@@ -536,6 +536,9 @@ indegreeDistribution c =
             \GROUP BY indegree ORDER BY indegree"
     in  query_ c q
 
+--------------------------------------------------------------------------------
+-- functions for partition analysis
+
 -- |Count of links between worlds in the given list.
 unreflLinkCountAmongWorlds :: Connection -> [T.Text] -> IO Int
 unreflLinkCountAmongWorlds c ws =
@@ -551,6 +554,9 @@ linkCountBetweenWorldSets c ws1 ws2 =
             \WHERE source IN ? AND target IN ? \
             \OR source IN ? AND target In ?"
     in  liftM (fromOnly . head) $ query c q (In ws1, In ws2, In ws2, In ws1)
+
+--------------------------------------------------------------------------------
+-- helper functions
 
 -- |Choose the lambda-table name according to the given LambdaType.
 chooseLambdaTable :: LambdaType -> TableName
