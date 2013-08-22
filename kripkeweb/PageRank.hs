@@ -17,15 +17,15 @@ calcAndUpdatePageRanks c i
     | otherwise = do
         _  <- initPageRankTable c
         ws <- sourcesInLinks c
-        calcAndUpdatePageRanks' c i ws
+        _  <- calcAndUpdatePageRanks' c i ws
         close c
 
--- |Recursive Helper for calcAndUpdatePageRanks
+-- |Recursive Helper for calcAndUpdatePageRanks.
 calcAndUpdatePageRanks' :: Connection -> Int -> [T.Text] -> IO ()
 calcAndUpdatePageRanks' c i ws
     | i < 1     = return ()
     | otherwise = do
-        mapM_ (calcAndUpdatePageRank c) ws
+        _ <- mapM_ (calcAndUpdatePageRank c) ws
         calcAndUpdatePageRanks' c (pred i) ws
 
 -- |Calculate and update the PageRank Score of a single world.
@@ -46,3 +46,4 @@ pageRankPure :: [(Double, Int)] -> Double
 pageRankPure rnkslnks =
     let qs = [rs / fromIntegral lc | (rs, lc) <- rnkslnks]
     in  0.15 + 0.85 * sum qs
+
