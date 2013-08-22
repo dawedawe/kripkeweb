@@ -18,7 +18,6 @@ import Model
 import PageRank
 import RoughSet
 import Tfidf
-import WebSpider
 
 main :: IO ()
 main = do
@@ -122,78 +121,4 @@ main = do
       printRoughSet rs
 
     close c
-
-testQuantors :: Conf -> IO ()
-testQuantors conf = do
-    c <- connect (conInfo conf)
-    let qWorlds = ["http://www.heise.de", "http://www.apple.com"] :: [T.Text]
-    let p cn _ w = stemLang cn w >>= \l -> return (l == "Dutch")
-
-    x <- eval2B c BdyRaw (All qWorlds p)
-    print x
-    y <- eval2B c BdyRaw (Ex qWorlds p)
-    print y
-
-testAllTopTfidf :: [String] -> IO ()
-testAllTopTfidf args = do
-    let n = read (head args)
-    c <- connect myConn
-    tops <- allTopTfidf c BdyRaw n
-    mapM_ print tops
-
-testLambda :: [String] -> IO ()
-testLambda args = do
-    let url = head args
-    c    <- connect myConn
-    frms <- lambda c BdyRaw (T.pack url)
-    mapM_ print frms
-
-{--
-testGetAndInsertLambdaRelation :: [String] -> IO ()
-testGetAndInsertLambdaRelation args = do
-    let url = T.pack (head args)
-    c            <- connect myConn
-    cnf          <- buildConf defaultOptions
-    (LambdaRels rf sf ef, sa) <- getLambdaRelation (proxy cnf) url
-    insertLambdaRelation c Raw rf
-    insertLambdaRelation c Stem sf
-    insertLambdaRelation c Soundex ef
-    insertStemLang c url sa
---}
-
-testPathsTo :: [String] -> IO ()
-testPathsTo args = do
-    let url = T.pack (head args)
-    c  <- connect myConn
-    ps <- pathsTo c url
-    mapM_ print ps
-
-testSpiderHOdb :: Conf -> IO ()
-testSpiderHOdb cnf = do
-    let depth = optRecDepth (opts cnf)
-    let url   = optUrl (opts cnf)
-    c    <- connect myConn
-    vstd <- spiderHO (proxy cnf) depth (insertAccessRel c) S.empty url
-    putStrLn ("\n\n\n" ++ show (S.size vstd) ++ " visited:\n" ++ show vstd)
- 
-testSpiderHOconsole :: [String] -> IO ()
-testSpiderHOconsole args = do
-    let depth = read (head args)
-    let url   = args !! 1
-    cnf       <- buildConf defaultOptions
-    vstd <- spiderHO (proxy cnf) depth print S.empty (T.pack url)
-    putStrLn ("\n\n\n" ++ show (S.size vstd) ++ " visited:\n" ++ show vstd)
- 
-testSpiderRelHOconsole :: String -> Int -> IO ()
-testSpiderRelHOconsole url depth = do
-    cnf       <- buildConf defaultOptions
-    vstd <- spiderRelHO (proxy cnf) depth print S.empty (T.pack url)
-    putStrLn ("\n\n\n" ++ show (S.size vstd) ++ " visited:\n" ++ show vstd)
- 
-testSpiderRelHOdb :: String -> Int -> IO ()
-testSpiderRelHOdb url depth = do
-    c    <- connect myConn
-    cnf  <- buildConf defaultOptions
-    vstd <- spiderRelHO (proxy cnf) depth (insertAccessRel c) S.empty (T.pack url)
-    putStrLn ("\n\n\n" ++ show (S.size vstd) ++ " visited:\n" ++ show vstd)
 
