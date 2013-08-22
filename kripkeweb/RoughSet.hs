@@ -26,11 +26,11 @@ data RoughSet = RoughSet { lowerApprox :: [T.Text]
 -- |Pretty print a RoughSet.
 printRoughSet :: RoughSet -> IO ()
 printRoughSet (RoughSet l u) = do
-    putStrLn "lower approximation = {"
-    mapM_ print l
-    putStrLn "}"
-    putStrLn "upper approximation = {"
-    mapM_ print u
+    _ <- putStrLn "lower approximation = {"
+    _ <- mapM_ print l
+    _ <- putStrLn "}"
+    _ <- putStrLn "upper approximation = {"
+    _ <- mapM_ print u
     putStrLn "}"
 
 -- |Upper Approximation - lower Approximation.
@@ -40,7 +40,7 @@ rBoundary (RoughSet l u) = u \\ l
 -- |Take the formula set of a world as the target concept.
 roughSetOfWorldsLam :: Connection -> LambdaType -> T.Text -> IO RoughSet
 roughSetOfWorldsLam c lamType w = do
-    lOfW    <- worldFormulas c lamType w
+    lOfW <- worldFormulas c lamType w
     roughSetOfLamList c lamType lOfW
 
 -- |Take a list of lambda formulas as the target concept.
@@ -64,14 +64,14 @@ roughSetOfLamPL c lamType fml =
       (PLAnd x y) -> do
                      (RoughSet lx ux) <- roughSetOfLamPL c lamType x
                      (RoughSet ly uy) <- roughSetOfLamPL c lamType y
-                     let low = lx `intersect` ly
-                     let upp = ux `intersect` uy
+                     let low          = lx `intersect` ly
+                     let upp          = ux `intersect` uy
                      return (RoughSet low upp)
       (PLOr x y)  -> do
                      (RoughSet lx ux) <- roughSetOfLamPL c lamType x
                      (RoughSet ly uy) <- roughSetOfLamPL c lamType y
-                     let low = lx `union` ly
-                     let upp = ux `union` uy
+                     let low          = lx `union` ly
+                     let upp          = ux `union` uy
                      return (RoughSet low upp)
       (PLImp x y) -> roughSetOfLamPL c lamType (PLOr (PLNot x) y)
 
@@ -100,3 +100,4 @@ roughSetOfWorldsOutLinks :: Connection -> T.Text -> IO RoughSet
 roughSetOfWorldsOutLinks c w = do
     ls <- targetsOf c w
     roughSetOfOutLinks c ls
+
