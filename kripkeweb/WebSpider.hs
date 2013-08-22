@@ -118,15 +118,6 @@ transparentUrls u
     | "/" `T.isSuffixOf` u = S.fromList [u, T.init u]
     | otherwise            = S.fromList [u, u `T.append` "/"]
 
-testHost :: Host
-testHost = Host (HTTP False) "www.openbsd.org" Nothing
-
-testUrlType :: URLType
-testUrlType = Absolute testHost
-
-testUrl :: URL
-testUrl = URL testUrlType "" []
-
 -- |Get all absolute HTTP Links from page except duplicates and invalid ones.
 getAllAbsLinkUrls :: Maybe Proxy -> URL -> IO (S.Set URL)
 getAllAbsLinkUrls prx u@(URL (Absolute _) _ _) = do
@@ -186,7 +177,7 @@ getPage :: Maybe Proxy -> String -> IO Page
 getPage prx url =
     runShpider $ do
       setCurlOpts [CurlTimeout 20, CurlFollowLocation True]
-        --CurlUserAgent userAgent]
+      -- addCurlOpts [CurlUserAgent userAgent]
       when (isJust prx) $ do
         let prx' = fromJust prx
         addCurlOpts [CurlProxy (fst prx'), CurlProxyPort (snd prx'),
@@ -194,10 +185,13 @@ getPage prx url =
       (_,p) <- download url
       return p
 
+-- |UserAgent Strint to use if we want to pretend to be a mobile device to get
+-- redirected to the mobile site versions.
 userAgent :: String
 userAgent = "Mozilla/5.0 (Linux; U; Android 2.3.3; de-de; \
     \HTC Desire Build/GRI40) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 \
     \Mobile Safari/533.1"
+
 --------------------------------------------------------------------------------
 -- functions for the lambda relation
 
@@ -248,10 +242,8 @@ constructLambdaRels url tgs mtaFmls bdyFmls =
       (LambdaRels mr1 mr2 mr3 br1 br2 br3, stalgo)
 
 -- |Add Count to the list of formulas.
-addCount :: [T.Text] -> [(T.Text, Int)]
-addCount xs =
-    let gs = group (sort xs)
-    in  map (head &&& length) gs
+addCount :: (Eq a, Ord a) => [a] -> [(a, Int)]
+addCount xs = map (head &&& length) (group (sort xs))
 
 -- |If Algorithm isn't Nothing give back a curried stem function otherwise id.
 constructStemFunc :: Maybe Algorithm -> T.Text -> T.Text
@@ -267,4 +259,16 @@ chooseStemAlgo url tgs =
     in  case lng of
           Just l  -> langAttr2StemAlgo l
           Nothing -> tld2StemAlgo (getDomain url)
+
+--------------------------------------------------------------------------------
+-- test helpers
+
+testHost :: Host
+testHost = Host (HTTP False) "www.openbsd.org" Nothing
+
+testUrlType :: URLType
+testUrlType = Absolute testHost
+
+testUrl :: URL
+testUrl = URL testUrlType "" []
 
