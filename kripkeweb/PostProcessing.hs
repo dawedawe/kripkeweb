@@ -26,9 +26,10 @@ foldLambdaSubWorld c lamType subW = do
     let mainW  = getDomainAsText subW
     mainFmlCnt <- worldFmlsAndCounts c lamType mainW
     subFmlCnt  <- worldFmlsAndCounts c lamType subW
-    mapM_ (foldLambdaSubworldEntry c lamType mainW mainFmlCnt) subFmlCnt
-    deleteLambdaWorld c lamType subW
-    when (lamType == Stem) $ deleteStemLangWorld c subW
+    _          <- mapM_ (foldLambdaSubworldEntry c lamType mainW mainFmlCnt)
+                    subFmlCnt
+    _          <- deleteLambdaWorld c lamType subW
+    when (lamType == BdyStem || lamType == MtaStem) $ deleteStemLangWorld c subW
 
 -- |Fold a single subworld entry in lambda into the main worlds data.
 foldLambdaSubworldEntry :: Connection -> LambdaType -> T.Text ->
@@ -43,3 +44,4 @@ foldLambdaSubworldEntry c lamType mainW mainFmlCnt (f, cnt) = do
 -- |True, if the given url is unequal to the domain only part of it.
 isSubsiteUrl :: T.Text -> Bool
 isSubsiteUrl url = url /= getDomainAsText url
+
