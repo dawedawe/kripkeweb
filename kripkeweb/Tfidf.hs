@@ -80,8 +80,8 @@ allTfidf c lamType = do
 -- |tf-idf scores of all worlds sorted descending, use precomputed DB values.
 allTfidfDB :: Connection -> LambdaType -> IO [(T.Text, [(T.Text, Double)])]
 allTfidfDB c lamType = do
-    ws  <- worldsInLambda c lamType
-    ts  <- mapM (worldsTfidfDB c lamType) ws
+    ws <- worldsInLambda c lamType
+    ts <- mapM (worldsTfidfDB c lamType) ws
     return (zip ws ts)
 
 -- |Top n tf-idf scores of all worlds, precompute as much as possible.
@@ -103,8 +103,8 @@ worldsTopTfidfPre c lamType n dfs topN w =
 worldsTfidfPre :: Connection -> LambdaType -> Int -> M.Map T.Text Int ->
                   T.Text -> IO [(T.Text, Double)]
 worldsTfidfPre c lamType n dfs w = do
-    terms <- lambda c lamType w
-    freqs <- mapM (tfidfPre c lamType n dfs w) terms
+    terms     <- lambda c lamType w
+    freqs     <- mapM (tfidfPre c lamType n dfs w) terms
     let tefrs = zip terms freqs
     return $ reverse (sortBy (compare `on` snd) tefrs)
 
@@ -120,7 +120,7 @@ documentFrequencyMap c lamType = do
 tfidfPre :: Connection -> LambdaType -> Int -> M.Map T.Text Int -> T.Text ->
             T.Text -> IO Double
 tfidfPre c lamType n dfs w t = do
-    tf <- termFrequency c lamType w t
+    tf     <- termFrequency c lamType w t
     let df = fromJust (M.lookup t dfs)
     return (tfidf' tf df n)
 
@@ -144,3 +144,4 @@ storeAllTfidf c lamType = do
 storeWorldsTfidf :: Connection -> LambdaType -> (T.Text, [(T.Text, Double)]) ->
                     IO ()
 storeWorldsTfidf c lamType (w, scores) = mapM_ (updateTfidf c lamType w) scores
+
