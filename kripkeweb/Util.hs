@@ -46,8 +46,7 @@ eqListElems x y = S.fromList x == S.fromList y
 
 -- |Drop the first and last p percent of the list elements.
 dropFirstAndLastXPercent :: Int -> [a] -> [a]
-dropFirstAndLastXPercent p xs =
-    dropLastXPercent p (dropFirstXPercent p xs)
+dropFirstAndLastXPercent p xs = dropLastXPercent p (dropFirstXPercent p xs)
 
 -- |Drop the first p percent of the list elements.
 dropFirstXPercent :: Int -> [a] -> [a]
@@ -73,12 +72,12 @@ isSoundExHash (c:x:y:z:[]) =
     c `elem` ['A' .. 'Z'] && isDigit x && isDigit y && isDigit z
 isSoundExHash _            = False
 
--- |True, if URL is Absolute and the protocol is HTTP, otherwise False
+-- |True, if URL is Absolute and the protocol is HTTP, otherwise False.
 isAbsoluteHttpUrl :: URL -> Bool
 isAbsoluteHttpUrl (URL (Absolute (Host (HTTP _) _ _)) _ _) = True
 isAbsoluteHttpUrl _                                        = False
 
--- |True, if String is an absolute HTTP URL, otherwise False
+-- |True, if String is an absolute HTTP URL, otherwise False.
 isStringAbsoluteHttpUrl :: String -> Bool
 isStringAbsoluteHttpUrl str =
       case importURL str of
@@ -91,3 +90,4 @@ appendUrlStrings u1 u2
     | last u1 /= '/' && head u2 /= '/' = u1 ++ "/" ++ u2
     | last u1 == '/' && head u2 == '/' = u1 ++ tail u2
     | otherwise                        = u1 ++ u2
+
