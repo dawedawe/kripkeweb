@@ -27,7 +27,7 @@ import KripkeTypes
 import Util (isAbsoluteHttpUrl, isSoundExHash)
 import WebParser
 
--- |Wrapper for Link to make it a non-orphan instance of Ord, needed for Set
+-- |Wrapper for Link to make it a non-orphan instance of Ord, needed for Set.
 newtype MyLink = MyLink { myLink :: Link }
                           deriving (Eq, Show)
 
@@ -56,15 +56,16 @@ spider prx i (v, aSets) u
     | transparentUrls dom `S.intersection` v /= S.empty = do
         putStrLn ("already visited " ++ T.unpack dom)
         return (v, aSets)
-    | i == 1           = do
+    | i == 1                                            = do
         as <- accessabilitySet prx u
         return (S.insert dom v, S.insert as aSets)
     | i > 1            = do
-        as <- accessabilitySet prx u
-        let v'     =  S.insert dom v
-        let aSets' =  S.insert as aSets
+        as         <- accessabilitySet prx u
+        let v'     = S.insert dom v
+        let aSets' = S.insert as aSets
         foldlM (spider prx (pred i)) (v', aSets') (S.toList (nEntities as))
-    | otherwise        = error "spider: undefined arguments"
+    | otherwise                                         =
+        error "spider: undefined arguments"
     where
       dom = getDomainAsText u
 
@@ -75,17 +76,19 @@ spiderHO :: Maybe Proxy -> Int -> (OneToN -> IO ()) -> S.Set T.Text -> T.Text ->
             IO (S.Set T.Text)
 spiderHO prx i f v u
     | transparentUrls dom `S.intersection` v /= S.empty = do
-        putStrLn ("already visited " ++ T.unpack dom)
+        _ <- putStrLn ("already visited " ++ T.unpack dom)
         return v
-    | i >= 1           = do
-        putStrLn ("spiderHO: i = " ++ show i ++ " f on " ++ T.unpack u)
-        as <- accessabilitySet prx u
-        f as
+    | i >= 1                                            = do
+        _      <- putStrLn ("spiderHO: i = " ++ show i ++ " f on " ++
+                    T.unpack u)
+        as     <- accessabilitySet prx u
+        _      <- f as
         let v' = S.insert dom v
         if i == 1
           then return v'
           else foldlM (spiderHO prx (pred i) f) v' (S.toList (nEntities as))
-    | otherwise        = error "spiderHO: undefined arguments"
+    | otherwise                                         =
+        error "spiderHO: undefined arguments"
     where
       dom = getDomainAsText u
 
@@ -96,17 +99,19 @@ spiderRelHO :: Maybe Proxy -> Int -> (OneToN -> IO ()) -> S.Set T.Text ->
                T.Text -> IO (S.Set T.Text)
 spiderRelHO prx i f v u
     | transparentUrls u `S.intersection` v /= S.empty = do
-        putStrLn ("already visited " ++ T.unpack u)
+        _ <- putStrLn ("already visited " ++ T.unpack u)
         return v
-    | i >= 1           = do
-        putStrLn ("spiderRelHO: i = " ++ show i ++ " f on " ++ T.unpack u)
-        as <- relAccessabilitySet prx u
-        f as
+    | i >= 1                                          = do
+        _      <- putStrLn ("spiderRelHO: i = " ++ show i ++ " f on " ++
+                    T.unpack u)
+        as     <- relAccessabilitySet prx u
+        _      <- f as
         let v' = S.insert u v
         if i == 1
           then return v'
           else foldlM (spiderRelHO prx (pred i) f) v' (S.toList (nEntities as))
-    | otherwise        = error "spiderRelHO: undefined arguments"
+    | otherwise                                       =
+        error "spiderRelHO: undefined arguments"
 
 -- |Wrapper for getDomain to deal with Text.
 getDomainAsText :: T.Text -> T.Text
@@ -121,7 +126,7 @@ transparentUrls u
 -- |Get all absolute HTTP Links from page except duplicates and invalid ones.
 getAllAbsLinkUrls :: Maybe Proxy -> URL -> IO (S.Set URL)
 getAllAbsLinkUrls prx u@(URL (Absolute _) _ _) = do
-      allLnks <- getAllLinksRaw prx (exportURL u)
+      allLnks     <- getAllLinksRaw prx (exportURL u)
       let valUrls = filterAbsHttpLinks allLnks
       return valUrls
 getAllAbsLinkUrls _ _                          =
@@ -130,7 +135,7 @@ getAllAbsLinkUrls _ _                          =
 -- |Get all relative HTTP Links from page except duplicates and invalid ones.
 getAllRelLinkUrls :: Maybe Proxy -> URL -> IO (S.Set URL)
 getAllRelLinkUrls prx u@(URL (Absolute h) _ _) = do
-      allLnks <- getAllLinksRaw prx (exportURL u)
+      allLnks     <- getAllLinksRaw prx (exportURL u)
       let relLnks = S.filter (isRelLink (exportHost h)) allLnks
       let valUrls = filterAbsHttpLinks relLnks
       return valUrls
@@ -146,7 +151,7 @@ isRelLink u (MyLink (Link ladr _))
 -- |Get all Links from page without any filtering or validation.
 getAllLinksRaw :: Maybe Proxy -> String -> IO (S.Set MyLink)
 getAllLinksRaw prx url = do
-      p <- getPage prx url
+      p        <- getPage prx url
       let myLs = map MyLink (links p)
       return (S.fromList myLs)
 
@@ -176,11 +181,13 @@ setMaybeaToSeta = S.map fromJust . S.delete Nothing
 getPage :: Maybe Proxy -> String -> IO Page
 getPage prx url =
     runShpider $ do
-      setCurlOpts [CurlTimeout 20, CurlFollowLocation True]
+      setCurlOpts [CurlTimeout 20,
+                   CurlFollowLocation True]
       -- addCurlOpts [CurlUserAgent userAgent]
       when (isJust prx) $ do
         let prx' = fromJust prx
-        addCurlOpts [CurlProxy (fst prx'), CurlProxyPort (snd prx'),
+        addCurlOpts [CurlProxy (fst prx'),
+                     CurlProxyPort (snd prx'),
                      CurlHttpProxyTunnel True]
       (_,p) <- download url
       return p
