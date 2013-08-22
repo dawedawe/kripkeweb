@@ -93,10 +93,10 @@ entropy bvec =
       p_f  = fromIntegral fcnt / fromIntegral len
       e_t  = if p_t == 0
                then 0
-               else (-p_t) * (logBase 2 p_t)
+               else (-p_t) * logBase 2 p_t
       e_f  = if p_f == 0
                then 0
-               else (-p_f) * (logBase 2 p_f)
+               else (-p_f) * logBase 2 p_f
     in
       e_t + e_f
 
@@ -487,7 +487,7 @@ connComp startEdge es =
     let
       dirConn    = filter (\e -> startEdge `S.intersection` e /= S.empty) es
       rest       = es L.\\ dirConn
-      startEdge' = startEdge `S.union` (S.unions dirConn)
+      startEdge' = startEdge `S.union` S.unions dirConn
     in
       if length dirConn > 0
         then connComp startEdge' rest
