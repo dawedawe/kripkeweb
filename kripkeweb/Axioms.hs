@@ -59,7 +59,8 @@ reflSymTransSubFrames c = do
     stF    <- symTransSubFrames c
     -- both ends of a relation must be reflexive, filter out elems not in reflsF
     -- and make sure the relation sets still contain a transitive relation
-    let reflSyTrR = S.filter (\r -> r /= S.empty && containsTransRel (S.toList r))
+    let reflSyTrR = S.filter
+                      (\r -> r /= S.empty && containsTransRel (S.toList r))
                       (S.map (S.filter (pairIn (wSet reflsF)))
                       (S.map accRel stF))
     -- generate Frames with reflexive R-elements, then add reflexive rels
@@ -82,7 +83,8 @@ startOfMissingSyms syms rels =
 -- |Make a relation symmetric.
 addSyms :: (Eq a, Ord a) => S.Set (a, a) -> S.Set (a, a)
 addSyms rels =
-    S.foldl S.union S.empty (S.map (\(x, y) -> S.fromList [(x, y), (y, x)]) rels)
+    S.foldl S.union S.empty
+      (S.map (\(x, y) -> S.fromList [(x, y), (y, x)]) rels)
 
 -- |Make a relation symmetric.
 addRefls :: (Eq a, Ord a) => S.Set (a, a) -> S.Set (a, a)
