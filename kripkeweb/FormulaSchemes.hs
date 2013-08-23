@@ -1,5 +1,8 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module FormulaSchemes
 ( atLeastOneSimilarAccWorld
+, deadEndScheme
 , lambdaAnded
 , lambdaAndedBoxed
 , lambdaAndedBoxedNegated
@@ -26,6 +29,10 @@ import KripkeTypes
 import Logic
 import Tfidf
 import Util
+
+-- |Scheme to decide if a world is a dead end or not.
+deadEndScheme :: Fml
+deadEndScheme = Not (Diamond (Or (Var "foo") (Not (Var "foo"))))
 
 -- |Construct for every world a formula that demands at least one similar
 -- accessable world.

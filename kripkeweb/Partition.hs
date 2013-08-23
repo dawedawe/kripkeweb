@@ -112,6 +112,17 @@ communityAndLoners c lamType prcnt = do
     return (comWs, ws L.\\ comWs)
 
 --------------------------------------------------------------------------------
+-- functions for partitioning between dead ends and non dead ends
+
+deadEndsAndNonDeadEnds :: Connection -> LambdaType -> IO ([T.Text], [T.Text])
+deadEndsAndNonDeadEnds c lamType = do
+    mdl       <- dbModel c lamType
+    let mdl'  = toUnreflModel mdl
+    let dEnds = satMWorlds mdl' deadEndScheme
+    let nEnds = S.toList (wSet (frame mdl')) L.\\ dEnds
+    return (dEnds, nEnds)
+
+--------------------------------------------------------------------------------
 -- functions for partitioning stats
 
 -- |1 - interrelation, the higher the less the two partitions stick together.
