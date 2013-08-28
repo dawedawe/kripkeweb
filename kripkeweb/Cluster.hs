@@ -7,6 +7,8 @@ module Cluster
 , disimilarity
 , fmlSpacePos
 , fmlSpacePoses
+, printClusterStats
+, printClusters
 , similarity
 ) where
 
