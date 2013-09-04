@@ -4,4 +4,3 @@
 - clusterToDigraphCliqueMeasure with different formula schemes 
 - partitions with different formula schemes, correlation of crosslink counts
   with schemes?
-- replace criteria of good centroid randomness with real entropy measure
