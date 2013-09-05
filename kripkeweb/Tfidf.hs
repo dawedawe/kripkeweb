@@ -89,7 +89,7 @@ allTopTfidf :: Connection -> LambdaType -> Int ->
                IO [(T.Text, [(T.Text, Double)])]
 allTopTfidf c lamType topN = do
     rs <- allTfidf c lamType
-    return $ map (second (take topN)) rs    
+    return $ map (second (take topN)) rs
 
 -- |Top n tf-idfs of a world.
 -- With precomputed number of worlds and document frequencies.
@@ -136,11 +136,13 @@ tfidfSortedSearch c lamType t = do
 --------------------------------------------------------------------------------
 -- functions for storing precomputed tfidf score in the database
 
+-- |Precompute all tfidf scores and store them in the database.
 storeAllTfidf :: Connection -> LambdaType -> IO ()
 storeAllTfidf c lamType = do
     allTs <- allTfidf c lamType
     mapM_ (storeWorldsTfidf c lamType) allTs
 
+-- |Store the given tfidf scores of a world's formulas in the database.
 storeWorldsTfidf :: Connection -> LambdaType -> (T.Text, [(T.Text, Double)]) ->
                     IO ()
 storeWorldsTfidf c lamType (w, scores) = mapM_ (updateTfidf c lamType w) scores

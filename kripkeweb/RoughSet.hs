@@ -19,6 +19,7 @@ import DB
 import KripkeTypes
 import Logic
 
+-- |Type to hold the tuple of a rough set.
 data RoughSet = RoughSet { lowerApprox :: [T.Text]
                          , upperApprox ::  [T.Text]
                          } deriving (Eq, Show)

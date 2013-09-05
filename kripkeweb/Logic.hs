@@ -385,6 +385,7 @@ instance Show Fml where
 
 type Predicate = Connection -> LambdaType -> T.Text -> IO Bool
 
+-- |Type to hold All and Ex quantor definitions.
 data Quantor = All { quanFmls :: [T.Text],  predicate :: Predicate }
              | Ex  { quanFmls :: [T.Text],  predicate :: Predicate }
      
@@ -404,6 +405,7 @@ instance Read PLFml where
 instance Read Fml where
     readsPrec _ s = [(parseFml s, "")]
 
+-- |Parse a String representations of a PLFml to a PLFml.
 parsePLFml :: String -> PLFml
 parsePLFml xs
     | xs == ""                     = error "parsePLFml: malformed expression"
@@ -424,6 +426,7 @@ parsePLFml' s =
                                 in  PLImp (parsePLFml p) (parsePLFml q)
       _                      -> error "parsePLFml: malformed expression"
 
+-- |Parse a String representations of a Fml to a Fml.
 parseFml :: String -> Fml
 parseFml xs
     | xs == ""                     = error "parseFml: malformed expression"

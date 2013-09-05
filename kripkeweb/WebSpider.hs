@@ -218,6 +218,7 @@ getLambdaRels prx url = do
     let bdyFmls = parseBody tgs
     return (constructLambdaRels url tgs mtaFmls bdyFmls)
 
+-- |Construct lambda relations and information fit to store in the database.
 constructLambdaRels :: T.Text -> [Tag String] -> [String] -> [String] ->
                        (LambdaRels, Maybe Algorithm)
 constructLambdaRels url tgs mtaFmls bdyFmls =
@@ -270,12 +271,15 @@ chooseStemAlgo url tgs =
 --------------------------------------------------------------------------------
 -- test helpers
 
+-- |Test Host.
 testHost :: Host
 testHost = Host (HTTP False) "www.openbsd.org" Nothing
 
+-- |Test URLType.
 testUrlType :: URLType
 testUrlType = Absolute testHost
 
+-- |Test URL.
 testUrl :: URL
 testUrl = URL testUrlType "" []
 

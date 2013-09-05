@@ -100,9 +100,8 @@ updateHubValue (Frame _ rels) bigG p =
       p { hub = authSum }
 
 --------------------------------------------------------------------------------
--- functions for partitioning between worlds belonging to some community and
--- loners
 
+-- |Partitioning between worlds belonging to some community and loners.
 communityAndLoners :: Connection -> LambdaType -> Int -> IO ([T.Text], [T.Text])
 communityAndLoners c lamType prcnt = do
     fmls      <- atLeastOneSimilarAccWorld c lamType prcnt
@@ -112,8 +111,8 @@ communityAndLoners c lamType prcnt = do
     return (comWs, ws L.\\ comWs)
 
 --------------------------------------------------------------------------------
--- functions for partitioning between dead ends and non dead ends
 
+-- |Partitioning between dead ends and non dead ends.
 deadEndsAndNonDeadEnds :: Connection -> LambdaType -> IO ([T.Text], [T.Text])
 deadEndsAndNonDeadEnds c lamType = do
     mdl       <- dbModel c lamType

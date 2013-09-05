@@ -73,6 +73,7 @@ instance ToField TableName where
     toField (TableName xs) = Plain (quote <> fromByteString xs <> quote)
        where quote = Utf8.fromChar '"'
 
+-- |ConnectInfo for quick tests in ghci.
 myConn :: ConnectInfo
 myConn = ConnectInfo "localhost" 5432 "saul" "13_kripke_13" "kripkeweb"
 
@@ -289,6 +290,7 @@ insertStemLang c w (Just alg) = do
     return ()
     where s = (T.pack . show . MyStemAlgo) alg
 
+-- |Delete an entry in the world_stem_lang table.
 deleteStemLangWorld :: Connection -> T.Text -> IO ()
 deleteStemLangWorld c w = do
     rs <- execute c "DELETE FROM world_stem_lang WHERE world = ?" (Only w)

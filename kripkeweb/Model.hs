@@ -38,6 +38,7 @@ getAndStoreLambdaRel c prx url = do
     when (nTuples bsf /= S.empty || nTuples msf /= S.empty) $
       insertStemLang c url sa
 
+-- |Error handler for the insertions of getAndStoreLambdaRel.
 sqlErrorHandler :: T.Text -> SqlError -> IO ()
 sqlErrorHandler url e = do
     putStrLn ("insertLambdaRelation failed for " ++ T.unpack url)

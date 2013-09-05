@@ -19,6 +19,7 @@ import PageRank
 import RoughSet
 import Tfidf
 
+-- |Parse the command line options and the config file and obey the user.
 main :: IO ()
 main = do
     parsedArgv <- getArgs >>= parseArgv

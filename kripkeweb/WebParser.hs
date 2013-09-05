@@ -204,7 +204,7 @@ hasOkLength s =
 isNoStopWord :: String -> Bool
 isNoStopWord s = s `notElem` stopWords
 
--- |True if string doesn't contains badChars.
+-- |True if String doesn't contains badChars.
 isAcceptableWord :: String -> Bool
 isAcceptableWord s = s `intersect` badChars == [] 
 

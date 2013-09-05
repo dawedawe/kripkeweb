@@ -80,17 +80,21 @@ defaultOptions = Options { optUrl      = T.empty
                          , optLamType  = BdyRaw
                          }
 
+-- |String representation of the executable name.
 progName :: String
 progName = "kripkeweb"
 
+-- |String representation of the configuration file name.
 confFileName :: String
 confFileName = progName ++ ".conf"
 
+-- |Command line usage.
 usage :: String
 usage =
     "Usage: " ++ progName ++
     " [-R url [-d n]] [-f plfrm] [-g frm] [-l] [-p n] [-t url]"
 
+-- |Definition of command line options.
 options :: [OptDescr (Options -> Options)]
 options = [
       Option "R" ["accrel"]
@@ -287,3 +291,4 @@ defaultConf =
     "# dbuser = postgres\n" ++
     "# dbpassword = \n" ++
     "# dbname = postgres"
+

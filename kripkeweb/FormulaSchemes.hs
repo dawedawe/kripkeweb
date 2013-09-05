@@ -42,6 +42,7 @@ atLeastOneSimilarAccWorld c lamType prcnt = do
     ts <- mapM (worldsTopXPercentTfidf c lamType prcnt) ws
     return (mapMaybe atLeastOneSimilarAccWorldHelper ts)
 
+-- |Helper function for atLeastOneSimilarAccWorld.
 atLeastOneSimilarAccWorldHelper :: [T.Text] -> Maybe Fml
 atLeastOneSimilarAccWorldHelper fmls =
     let

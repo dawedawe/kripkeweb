@@ -256,6 +256,8 @@ splitCluster cluster =
 splitCluster' :: Model -> Cluster -> [Cluster]
 splitCluster' mdl cluster = splitClusterHelper mdl cluster 1
 
+-- |Helper function for splitCluster'. Splits off objects till
+-- minClusterSimilarity is reached.
 splitClusterHelper :: Model -> Cluster -> Int -> [Cluster]
 splitClusterHelper _ [ ] _       = []
 splitClusterHelper _ [x] _       = [[x]]
