@@ -179,16 +179,17 @@ keepCentroidsOfEmptyClusters os ns
 --------------------------------------------------------------------------------
 -- functions for cluster merging/splitting
 
--- |Lowest acceptable cluster similarity in decision to split or not to split
+-- |Lowest acceptable cluster similarity in decision to split or not to split.
 minClusterSimilarity :: Double
 minClusterSimilarity = 0.2
 
--- |Lowest acceptable cluster disimilarity in decision to merge or not to merge
-minClusterDisimilarity :: Double
-minClusterDisimilarity = 0.8
+-- |Lowest acceptable cluster dissimilarity in decision to merge or not to
+-- merge.
+minClusterDissimilarity :: Double
+minClusterDissimilarity = 0.8
 
--- |Merge clusters with too small a disimilarity, fill up empty spots with empty
--- lists to maintain the index information, then delete the empty lists.
+-- |Merge clusters with too small a dissimilarity, fill up empty spots with
+-- empty lists to maintain the index information, then delete the empty lists.
 mergeClusters :: Model -> [Cluster] -> [Cluster]
 mergeClusters mdl clusters =
     let mergeList = dropOverlappingPairs (mergeCandidates mdl clusters)
@@ -208,22 +209,22 @@ workOffMergeList clusters (x:xs) =
     in
       workOffMergeList c'' xs
 
--- |Index pairs of clusters with a too small disimilarity.
+-- |Index pairs of clusters with a too small dissimilarity.
 mergeCandidates :: Model -> [Cluster] -> [(Int, Int)]
 mergeCandidates mdl clusters =
     let
-      ds     = map (clusterDisims' mdl clusters) clusters
+      ds     = map (clusterDissims' mdl clusters) clusters
       mcs    = map mergeCandidate ds
       pairs  = zip [0..] mcs
       pairs' = filter (isJust . snd) pairs
     in
       map (\(x, Just y) -> (x, y)) pairs'
 
--- |Index of first cluster with 0.0 < disimilarity < minClusterDisimilarity.
+-- |Index of first cluster with 0.0 < dissimilarity < minClusterDissimilarity.
 mergeCandidate :: [Maybe Double] -> Maybe Int
 mergeCandidate =
     L.findIndex (\d -> isJust d &&
-      fromJust d > 0.0 && fromJust d < minClusterDisimilarity)
+      fromJust d > 0.0 && fromJust d < minClusterDissimilarity)
 
 -- |Indexes of Clusters with too small a similarity.
 splitCandidates :: Model -> [Cluster] -> [Int]

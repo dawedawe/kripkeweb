@@ -1,5 +1,5 @@
 module Measure
-( disimilarity
+( dissimilarity
 , edgesInDigraphClique
 , similarity
 ) where
@@ -18,9 +18,9 @@ similarity x y
         in
           fromIntegral interSize / fromIntegral unionSize
 
--- |Simple disimilarity measure: 1 - similarity x y.
-disimilarity :: (Eq a, Ord a) => S.Set a -> S.Set a -> Double
-disimilarity x y = 1 - similarity x y
+-- |Simple dissimilarity measure: 1 - similarity x y.
+dissimilarity :: (Eq a, Ord a) => S.Set a -> S.Set a -> Double
+dissimilarity x y = 1 - similarity x y
 
 -- |Edge count in a total directed graph.
 edgesInDigraphClique :: Int -> Int

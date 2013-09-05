@@ -2,9 +2,9 @@ module Cluster
 ( Cluster
 , SpacePnt (..)
 , boolsDist
-, clusterDisims'
+, clusterDissims'
 , clusterSim
-, disimilarity
+, dissimilarity
 , fmlSpacePos
 , fmlSpacePoses
 , printClusterStats
@@ -56,7 +56,7 @@ boolDist x y
     | otherwise = 1
 
 --------------------------------------------------------------------------------
--- functions for similarity/disimilarity measures
+-- functions for similarity/dissimilarity measures
 
 -- |Average similarity of pairs in a cluster.
 clusterSim :: Model -> Cluster -> Maybe Double
@@ -69,26 +69,27 @@ clusterSim (Model _ lam) cluster
         in
           Just (sum sims / fromIntegral (length sims))
 
--- |Disimilarity between the formula sets of two clusters.
-clusterDisim :: Model -> Cluster -> Cluster -> Maybe Double
-clusterDisim (Model _ lam) c1 c2
+-- |Dissimilarity between the formula sets of two clusters.
+clusterDissim :: Model -> Cluster -> Cluster -> Maybe Double
+clusterDissim (Model _ lam) c1 c2
     | null c1 || null c2 = Nothing
     | otherwise          =
         let
           c1ls = concatMap (lam . name) c1
           c2ls = concatMap (lam . name) c2
         in
-          Just (disimilarity (S.fromList c1ls) (S.fromList c2ls))
+          Just (dissimilarity (S.fromList c1ls) (S.fromList c2ls))
 
 
--- |Disimilarity scores of one cluster to a list of other clusters.
-clusterDisims :: Model -> [Cluster] -> Cluster -> [Maybe Double]
-clusterDisims mdl clusters cl = map (clusterDisim mdl cl) (L.delete cl clusters)
+-- |Dissimilarity scores of one cluster to a list of other clusters.
+clusterDissims :: Model -> [Cluster] -> Cluster -> [Maybe Double]
+clusterDissims mdl clusters cl =
+    map (clusterDissim mdl cl) (L.delete cl clusters)
 
--- |Disimilarity scores of one cluster to a list of clusters, maybe including it
--- self.
-clusterDisims' :: Model -> [Cluster] -> Cluster -> [Maybe Double]
-clusterDisims' mdl clusters cl = map (clusterDisim mdl cl) clusters
+-- |Dissimilarity scores of one cluster to a list of clusters, maybe including
+-- it self.
+clusterDissims' :: Model -> [Cluster] -> Cluster -> [Maybe Double]
+clusterDissims' mdl clusters cl = map (clusterDissim mdl cl) clusters
 
 -- |Average similarity of a list of clusters.
 avgClusterSim :: Model -> [Cluster] -> Double
@@ -98,13 +99,13 @@ avgClusterSim mdl clusters
         let ss  = mapMaybe (clusterSim mdl) clusters
         in  sum ss / fromIntegral (length ss)
 
--- |Average disimilarity among a list of clusters.
-avgClusterDisim :: Model -> [Cluster] -> Double
-avgClusterDisim mdl clusters
+-- |Average dissimilarity among a list of clusters.
+avgClusterDissim :: Model -> [Cluster] -> Double
+avgClusterDissim mdl clusters
     | length (filter (not . null) clusters) < 2 =
-        error "avgClusterDisim: < 2 unempty clusters given"
+        error "avgClusterDissim: < 2 unempty clusters given"
     | otherwise                                 =
-        let ds  = concatMap (clusterDisims mdl clusters) clusters
+        let ds  = concatMap (clusterDissims mdl clusters) clusters
         in  sum (catMaybes ds) / fromIntegral (length ds)
 
 --------------------------------------------------------------------------------
@@ -123,13 +124,14 @@ instance Show ClusterStats where
       " similarity = " ++ show (clusterStatSim cs) ++
       " cliqueness = " ++ show (cliquenessStat cs)
 
--- |Print the stats of all given clusers and the avgClusterSim, avgClusterDisim
+-- |Print the stats of all given clusers and the avgClusterSim,
+-- avgClusterDissim.
 printClusterStats :: Model -> [Cluster] -> IO ()
 printClusterStats mdl clusters = do
     let ss = map (genClusterStats mdl) clusters
     mapM_ print ss
-    putStrLn ("avgClusterSim = " ++ show (avgClusterSim mdl clusters))
-    putStrLn ("avgClusterDisim = " ++ show (avgClusterDisim mdl clusters))
+    putStrLn ("avgClusterSim        = " ++ show (avgClusterSim mdl clusters))
+    putStrLn ("avgClusterDissim     = " ++ show (avgClusterDissim mdl clusters))
     putStrLn ("avgClusterCliqueness = " ++
       show (avgClusterCliqueness (frame mdl) clusters))
 
