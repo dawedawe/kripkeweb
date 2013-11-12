@@ -13,7 +13,7 @@ name:                kripkeweb
 version:             0.3.0.0
 
 -- A short (one-line) description of the package.
-synopsis:            calculate a kripke model for the web
+synopsis:            calculate and analyse kripke models of the web
 
 -- A longer description of the package.
 description:         Calculate a kripke model for the web using web spidering to
