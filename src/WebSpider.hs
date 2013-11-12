@@ -182,7 +182,8 @@ getPage :: Maybe Proxy -> String -> IO Page
 getPage prx url =
     runShpider $ do
       setCurlOpts [CurlTimeout 20,
-                   CurlFollowLocation True]
+                   CurlFollowLocation True,
+                   CurlMaxRedirs 5]
       -- addCurlOpts [CurlUserAgent userAgent]
       when (isJust prx) $ do
         let prx' = fromJust prx
